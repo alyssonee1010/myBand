@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const handleCreateGroup = async (name: string, description: string) => {
     try {
       const newGroup = await groupApi.createGroup(name, description)
-      setGroups([...groups, newGroup])
+      setGroups((currentGroups) => [...currentGroups, newGroup])
       setShowCreateModal(false)
     } catch (err) {
       alert('Failed to create group')

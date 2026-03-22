@@ -17,6 +17,7 @@ export declare const contentApi: {
 };
 export declare const setlistApi: {
     createSetlist: (groupId: string, name: string) => Promise<any>;
+    getGroupSetlists: (groupId: string) => Promise<any>;
     getSetlist: (groupId: string, setlistId: string) => Promise<any>;
     addItemToSetlist: (groupId: string, setlistId: string, contentId: string) => Promise<any>;
     reorderSetlistItems: (groupId: string, setlistId: string, items: Array<{

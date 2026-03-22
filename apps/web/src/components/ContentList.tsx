@@ -55,10 +55,11 @@ export default function ContentList({ contents, onDelete, groupId }: Props) {
             </div>
 
             <div className="flex gap-2">
-              <Link to={`/groups/${groupId}/setlists`}>
-                <button className="btn-secondary text-sm inline-block">
-                  View Setlists
-                </button>
+              <Link
+                to={`/groups/${groupId}/setlists`}
+                className="btn-secondary text-sm inline-block"
+              >
+                View Setlists
               </Link>
               <button
                 onClick={() => onDelete(content.id)}

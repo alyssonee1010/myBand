@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import GroupPage from './pages/GroupPage'
+import SetlistsPage from './pages/SetlistsPage'
 import SetlistPage from './pages/SetlistPage'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/auth/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/groups/:groupId" element={<GroupPage />} />
+        <Route path="/groups/:groupId/setlists" element={<SetlistsPage />} />
         <Route path="/groups/:groupId/setlists/:setlistId" element={<SetlistPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

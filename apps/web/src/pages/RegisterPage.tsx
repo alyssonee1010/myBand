@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../lib/api'
 import '../styles/auth.css'
 
@@ -147,14 +147,15 @@ export default function RegisterPage() {
               </>
             ) : (
               'Sign Up'
+            )}
           </button>
         </form>
 
         <p className="text-center mt-6">
           Already have an account?{' '}
-          <a href="/auth/login" className="text-blue-600 font-bold hover:underline">
+          <Link to="/auth/login" className="text-blue-600 font-bold hover:underline">
             Login
-          </a>
+          </Link>
         </p>
       </div>
     </div>

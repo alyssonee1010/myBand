@@ -17,22 +17,37 @@ apiClient.interceptors.request.use((config) => {
 });
 // Handle errors
 apiClient.interceptors.response.use((response) => response, (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const data = error.response?.data;
+    // Extract error message from backend response
+    const message = data?.error || data?.message || error.message || 'API Error';
+    // Only redirect to login for 401 on protected routes (not during auth)
+    // Don't redirect if we're on login/register pages
+    if (status === 401 && !window.location.pathname.includes('/auth/')) {
         localStorage.removeItem('token');
         window.location.href = '/auth/login';
     }
-    return Promise.reject(error.response?.data?.message || 'API Error');
+    // Create an error object that preserves the message
+    const errorObj = new Error(message);
+    errorObj.name = 'ApiError';
+    errorObj.status = status;
+    errorObj.response = data;
+    return Promise.reject(errorObj);
 });
 // Auth API
 export const authApi = {
     register: async (email, password, name) => {
         const { data } = await apiClient.post('/auth/register', { email, password, name });
-        localStorage.setItem('token', data.token);
+        if (data.token) {
+            localStorage.setItem('token', data.token);
+        }
         return data;
     },
     login: async (email, password) => {
         const { data } = await apiClient.post('/auth/login', { email, password });
-        localStorage.setItem('token', data.token);
+        if (data.token) {
+            localStorage.setItem('token', data.token);
+        }
         return data;
     },
     getProfile: async () => {
@@ -44,11 +59,11 @@ export const authApi = {
 export const groupApi = {
     createGroup: async (name, description) => {
         const { data } = await apiClient.post('/groups', { name, description });
-        return data.group;
+        return data.group ?? data;
     },
     getGroup: async (groupId) => {
         const { data } = await apiClient.get(`/groups/${groupId}`);
-        return data.group;
+        return data.group ?? data;
     },
     addMember: async (groupId, email) => {
         const { data } = await apiClient.post(`/groups/${groupId}/members`, { email });
@@ -89,11 +104,15 @@ export const contentApi = {
 export const setlistApi = {
     createSetlist: async (groupId, name) => {
         const { data } = await apiClient.post(`/groups/${groupId}/setlists`, { name });
-        return data.setlist;
+        return data.setlist ?? data;
+    },
+    getGroupSetlists: async (groupId) => {
+        const { data } = await apiClient.get(`/groups/${groupId}/setlists`);
+        return data.setlists ?? data;
     },
     getSetlist: async (groupId, setlistId) => {
         const { data } = await apiClient.get(`/groups/${groupId}/setlists/${setlistId}`);
-        return data.setlist;
+        return data.setlist ?? data;
     },
     addItemToSetlist: async (groupId, setlistId, contentId) => {
         const { data } = await apiClient.post(`/groups/${groupId}/setlists/${setlistId}/items`, { contentId });

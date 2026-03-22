@@ -25,10 +25,10 @@ apiClient.interceptors.response.use(
   (error) => {
     const status = error.response?.status
     const data = error.response?.data
-    
+
     // Extract error message from backend response
     const message = data?.error || data?.message || error.message || 'API Error'
-    
+
     // Only redirect to login for 401 on protected routes (not during auth)
     // Don't redirect if we're on login/register pages
     if (status === 401 && !window.location.pathname.includes('/auth/')) {
@@ -74,12 +74,12 @@ export const authApi = {
 export const groupApi = {
   createGroup: async (name: string, description?: string) => {
     const { data } = await apiClient.post('/groups', { name, description })
-    return data.group
+    return data.group ?? data
   },
 
   getGroup: async (groupId: string) => {
     const { data } = await apiClient.get(`/groups/${groupId}`)
-    return data.group
+    return data.group ?? data
   },
 
   addMember: async (groupId: string, email: string) => {
@@ -138,12 +138,17 @@ export const contentApi = {
 export const setlistApi = {
   createSetlist: async (groupId: string, name: string) => {
     const { data } = await apiClient.post(`/groups/${groupId}/setlists`, { name })
-    return data.setlist
+    return data.setlist ?? data
+  },
+
+  getGroupSetlists: async (groupId: string) => {
+    const { data } = await apiClient.get(`/groups/${groupId}/setlists`)
+    return data.setlists ?? data
   },
 
   getSetlist: async (groupId: string, setlistId: string) => {
     const { data } = await apiClient.get(`/groups/${groupId}/setlists/${setlistId}`)
-    return data.setlist
+    return data.setlist ?? data
   },
 
   addItemToSetlist: async (groupId: string, setlistId: string, contentId: string) => {
