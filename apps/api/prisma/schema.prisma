@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Users & Authentication
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Stored hashed with bcryptjs
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  memberships GroupMember[]
+  contents    Content[]
+
+  @@index([email])
+}
+
+// ============================================================================
+// Groups (Bands)
+// ============================================================================
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members  GroupMember[]
+  contents Content[]
+  setlists Setlist[]
+
+  @@index([createdAt])
+}
+
+// Join table for Users <-> Groups (M2M)
+model GroupMember {
+  id      String @id @default(cuid())
+  userId  String
+  groupId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  role      String    @default("member") // "admin", "member"
+  joinedAt  DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, groupId]) // Prevent duplicate memberships
+  @@index([userId])
+  @@index([groupId])
+}
+
+// ============================================================================
+// Content (Lyrics, Chords, PDFs, Images)
+// ============================================================================
+
+model Content {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  contentType String   // "lyrics", "chords", "pdf", "image"
+  
+  // File storage
+  fileUrl     String?  // Relative path for local files, Absolute URI for S3
+  fileName    String?  // Original file name
+  fileSizeKb  Int?     // File size in KB (for future billing)
+  
+  // Text content (for lyrics/chords entered as text)
+  textContent String?  @db.Text
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Foreign keys
+  groupId     String
+  createdById String
+
+  group     Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User          @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  
+  // This content belongs to multiple setlists
+  setlistItems SetlistItem[]
+
+  @@index([groupId])
+  @@index([createdById])
+  @@index([contentType])
+}
+
+// ============================================================================
+// Setlists (Ordered lists of content)
+// ============================================================================
+
+model Setlist {
+  id        String   @id @default(cuid())
+  name      String
+  groupId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  items SetlistItem[]
+
+  @@index([groupId])
+}
+
+// Join table for Content <-> Setlists (M2M) with order
+model SetlistItem {
+  id         String @id @default(cuid())
+  setlistId  String
+  contentId  String
+  position   Int    // Position in the setlist (0, 1, 2, ...)
+
+  setlist Setlist @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([setlistId, position]) // Ensure unique positions
+  @@index([setlistId])
+  @@index([contentId])
+}
