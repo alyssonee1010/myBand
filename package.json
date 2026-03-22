@@ -1,0 +1,22 @@
+{
+  "name": "myband",
+  "version": "0.1.0",
+  "description": "A music collaboration web app for bands",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspaces"
+  },
+  "keywords": [
+    "band",
+    "music",
+    "collaboration"
+  ],
+  "author": "",
+  "license": "MIT"
+}
