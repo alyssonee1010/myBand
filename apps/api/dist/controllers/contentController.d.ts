@@ -1,0 +1,18 @@
+import { Request, Response } from 'express';
+/**
+ * Upload a file (PDF or image)
+ */
+export declare const uploadContent: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
+ * Add text content (lyrics or chords)
+ */
+export declare const addTextContent: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
+ * Get all content in a group
+ */
+export declare const getGroupContent: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
+ * Delete content
+ */
+export declare const deleteContent: (req: Request, res: Response, next: import("express").NextFunction) => void;
+//# sourceMappingURL=contentController.d.ts.map
