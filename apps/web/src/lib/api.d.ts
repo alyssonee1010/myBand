@@ -1,3 +1,4 @@
+export declare const API_ORIGIN: string;
 declare const apiClient: import("axios").AxiosInstance;
 export declare const authApi: {
     register: (email: string, password: string, name?: string) => Promise<any>;
@@ -13,6 +14,7 @@ export declare const contentApi: {
     uploadContent: (groupId: string, title: string, description: string, file: File) => Promise<any>;
     addTextContent: (groupId: string, title: string, textContent: string, contentType: string, description?: string) => Promise<any>;
     getGroupContent: (groupId: string) => Promise<any>;
+    getContentFile: (groupId: string, contentId: string) => Promise<Blob>;
     deleteContent: (groupId: string, contentId: string) => Promise<any>;
 };
 export declare const setlistApi: {

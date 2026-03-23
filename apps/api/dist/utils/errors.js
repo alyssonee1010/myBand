@@ -9,11 +9,18 @@ export class ApiError extends Error {
  * Global error handler middleware
  */
 export function errorHandler(err, req, res, next) {
-    console.error('[ERROR]', err);
+    console.error('[ERROR]', {
+        name: err.name,
+        message: err.message,
+        statusCode: err instanceof ApiError ? err.statusCode : 500,
+        path: req.path,
+        method: req.method,
+    });
     if (err instanceof ApiError) {
         res.status(err.statusCode).json({
             error: err.message,
             status: err.statusCode,
+            timestamp: new Date().toISOString(),
         });
         return;
     }
@@ -21,6 +28,7 @@ export function errorHandler(err, req, res, next) {
     res.status(500).json({
         error: 'Internal server error',
         status: 500,
+        timestamp: new Date().toISOString(),
     });
 }
 /**

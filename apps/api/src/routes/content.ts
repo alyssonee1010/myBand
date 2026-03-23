@@ -3,6 +3,7 @@ import {
   uploadContent,
   addTextContent,
   getGroupContent,
+  getContentFile,
   deleteContent,
 } from '../controllers/contentController';
 import { asyncHandler } from '../utils/errors';
@@ -51,6 +52,12 @@ router.post('/text', asyncHandler(addTextContent));
  * @desc Get all content in a group
  */
 router.get('/', asyncHandler(getGroupContent));
+
+/**
+ * @route GET /api/groups/:groupId/content/:contentId/file
+ * @desc Stream a file for inline viewing
+ */
+router.get('/:contentId/file', asyncHandler(getContentFile));
 
 /**
  * @route DELETE /api/groups/:groupId/content/:contentId

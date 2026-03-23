@@ -4,16 +4,22 @@ import { ApiError } from '../utils/errors';
  * Middleware to verify JWT token and attach userId to request
  */
 export function authMiddleware(req, res, next) {
-    const token = extractToken(req.headers.authorization, req.headers.cookie);
-    if (!token) {
-        throw new ApiError(401, 'No token provided');
+    try {
+        const token = extractToken(req.headers.authorization, req.headers.cookie);
+        if (!token) {
+            throw new ApiError(401, 'No token provided');
+        }
+        const decoded = verifyToken(token);
+        if (!decoded) {
+            throw new ApiError(401, 'Invalid or expired token');
+        }
+        req.userId = decoded.userId;
+        next();
     }
-    const decoded = verifyToken(token);
-    if (!decoded) {
-        throw new ApiError(401, 'Invalid or expired token');
+    catch (err) {
+        // Pass error to Express error handler
+        next(err);
     }
-    req.userId = decoded.userId;
-    next();
 }
 /**
  * Middleware to allow CORS and preflight requests

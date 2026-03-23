@@ -12,6 +12,10 @@ export declare const addTextContent: (req: Request, res: Response, next: import(
  */
 export declare const getGroupContent: (req: Request, res: Response, next: import("express").NextFunction) => void;
 /**
+ * Stream a stored file with inline headers for in-app viewing
+ */
+export declare const getContentFile: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
  * Delete content
  */
 export declare const deleteContent: (req: Request, res: Response, next: import("express").NextFunction) => void;

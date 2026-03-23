@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { register, login, getProfile } from '../controllers/authController';
 import { asyncHandler } from '../utils/errors';
+import { authMiddleware } from '../middleware/auth';
 const router = Router();
 /**
  * @route POST /api/auth/register
@@ -18,6 +19,6 @@ router.post('/login', asyncHandler(login));
  * @route GET /api/auth/me
  * @desc Get current user profile (protected)
  */
-router.get('/me', asyncHandler(getProfile));
+router.get('/me', authMiddleware, asyncHandler(getProfile));
 export default router;
 //# sourceMappingURL=auth.js.map

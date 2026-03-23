@@ -1,8 +1,11 @@
 import { Router } from 'express';
-import { uploadContent, addTextContent, getGroupContent, deleteContent, } from '../controllers/contentController';
+import { uploadContent, addTextContent, getGroupContent, getContentFile, deleteContent, } from '../controllers/contentController';
 import { asyncHandler } from '../utils/errors';
+import { authMiddleware } from '../middleware/auth';
 import multer from 'multer';
 const router = Router({ mergeParams: true }); // Allow inherited params like groupId
+// Apply auth middleware to all routes
+router.use(authMiddleware);
 // Configure multer for file uploads
 const upload = multer({
     dest: process.env.UPLOAD_DIR || './uploads',
@@ -37,6 +40,11 @@ router.post('/text', asyncHandler(addTextContent));
  * @desc Get all content in a group
  */
 router.get('/', asyncHandler(getGroupContent));
+/**
+ * @route GET /api/groups/:groupId/content/:contentId/file
+ * @desc Stream a file for inline viewing
+ */
+router.get('/:contentId/file', asyncHandler(getContentFile));
 /**
  * @route DELETE /api/groups/:groupId/content/:contentId
  * @desc Delete content

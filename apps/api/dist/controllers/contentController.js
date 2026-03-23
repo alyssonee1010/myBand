@@ -4,6 +4,24 @@ import path from 'path';
 import fs from 'fs';
 const prisma = new PrismaClient();
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+const getMimeType = (contentType, fileName) => {
+    const ext = path.extname(fileName || '').toLowerCase();
+    if (ext === '.pdf' || contentType === 'pdf') {
+        return 'application/pdf';
+    }
+    if (ext === '.png')
+        return 'image/png';
+    if (ext === '.gif')
+        return 'image/gif';
+    if (ext === '.webp')
+        return 'image/webp';
+    if (ext === '.jpg' || ext === '.jpeg')
+        return 'image/jpeg';
+    if (contentType === 'image') {
+        return 'image/jpeg';
+    }
+    return 'application/octet-stream';
+};
 /**
  * Upload a file (PDF or image)
  */
@@ -108,6 +126,35 @@ export const getGroupContent = asyncHandler(async (req, res) => {
         },
     });
     res.json({ contents });
+});
+/**
+ * Stream a stored file with inline headers for in-app viewing
+ */
+export const getContentFile = asyncHandler(async (req, res) => {
+    const userId = req.userId;
+    const { groupId, contentId } = req.params;
+    if (!userId) {
+        throw new ApiError(401, 'Unauthorized');
+    }
+    const membership = await prisma.groupMember.findUnique({
+        where: { userId_groupId: { userId, groupId } },
+    });
+    if (!membership) {
+        throw new ApiError(403, 'You are not a member of this group');
+    }
+    const content = await prisma.content.findUnique({
+        where: { id: contentId },
+    });
+    if (!content || content.groupId !== groupId || !content.fileUrl) {
+        throw new ApiError(404, 'Content file not found');
+    }
+    const filePath = path.resolve(UPLOAD_DIR, path.basename(content.fileUrl));
+    if (!fs.existsSync(filePath)) {
+        throw new ApiError(404, 'Stored file not found');
+    }
+    res.setHeader('Content-Type', getMimeType(content.contentType, content.fileName));
+    res.setHeader('Content-Disposition', `inline; filename="${content.fileName || 'content'}"`);
+    res.sendFile(filePath);
 });
 /**
  * Delete content

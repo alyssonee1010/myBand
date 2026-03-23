@@ -1,1 +1,250 @@
 /* Setlist page styles */
+
+.setlist-layout {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.setlist-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.setlist-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.setlist-viewer-label {
+  margin-bottom: 0.25rem;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.setlist-viewer-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.setlist-viewer-body {
+  min-height: 70vh;
+  overflow: hidden;
+  border: 1px solid #dbeafe;
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(219, 234, 254, 0.7), rgba(255, 255, 255, 0.95)),
+    linear-gradient(135deg, #eff6ff, #ffffff);
+  touch-action: pan-y;
+}
+
+.setlist-viewer-media,
+.setlist-viewer-text,
+.setlist-viewer-empty {
+  min-height: 70vh;
+  height: 100%;
+}
+
+.setlist-viewer-media {
+  padding: 0.75rem;
+}
+
+.setlist-viewer-frame,
+.setlist-viewer-image {
+  width: 100%;
+  height: calc(70vh - 1.5rem);
+  border: 0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.setlist-viewer-image {
+  object-fit: contain;
+}
+
+.setlist-viewer-text {
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.setlist-viewer-text pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.setlist-viewer-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+.setlist-viewer-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.performance-mode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at top, rgba(37, 99, 235, 0.16), transparent 30%),
+    #020617;
+  color: #f8fafc;
+  padding: 1.25rem;
+}
+
+.performance-mode-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.performance-mode-label {
+  margin-bottom: 0.35rem;
+  color: #93c5fd;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.performance-mode-topbar h2 {
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-weight: 700;
+}
+
+.performance-mode-topbar p {
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.performance-mode-close {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  background: rgba(15, 23, 42, 0.65);
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.performance-mode-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.performance-mode-body .setlist-viewer-media,
+.performance-mode-body .setlist-viewer-text,
+.performance-mode-body .setlist-viewer-empty,
+.performance-mode-body .setlist-viewer-body {
+  min-height: 100%;
+}
+
+.performance-mode-body .setlist-viewer-media {
+  padding: 0;
+}
+
+.performance-mode-body .setlist-viewer-frame,
+.performance-mode-body .setlist-viewer-image {
+  height: 100%;
+  min-height: 100%;
+  border-radius: 1rem;
+}
+
+.performance-mode-body .setlist-viewer-text {
+  height: 100%;
+  padding: 2rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.performance-mode-body .setlist-viewer-text pre {
+  color: #f8fafc;
+  font-size: clamp(1.1rem, 2vw, 1.6rem);
+  line-height: 1.9;
+}
+
+.performance-mode-body .setlist-viewer-empty {
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.performance-mode-hint {
+  padding-top: 1rem;
+  color: rgba(226, 232, 240, 0.8);
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  .setlist-viewer-header {
+    flex-direction: column;
+  }
+
+  .setlist-viewer-actions {
+    width: 100%;
+  }
+
+  .setlist-viewer-actions button {
+    flex: 1 1 0;
+  }
+
+  .setlist-viewer-body,
+  .setlist-viewer-media,
+  .setlist-viewer-text,
+  .setlist-viewer-empty {
+    min-height: 60vh;
+  }
+
+  .setlist-viewer-frame,
+  .setlist-viewer-image {
+    height: calc(60vh - 1.5rem);
+  }
+
+  .performance-mode-overlay {
+    padding: 1rem;
+  }
+
+  .performance-mode-topbar {
+    flex-direction: column;
+  }
+
+  .performance-mode-close {
+    align-self: flex-start;
+  }
+
+  .performance-mode-body .setlist-viewer-text {
+    padding: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .setlist-layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
+    align-items: start;
+  }
+
+  .setlist-layout > :last-child {
+    position: sticky;
+    top: 2rem;
+  }
+}

@@ -1,5 +1,6 @@
 import axios from 'axios';
 const API_BASE_URL = 'http://localhost:3001/api';
+export const API_ORIGIN = new URL(API_BASE_URL).origin;
 // Get token from localStorage and attach to requests
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -93,6 +94,12 @@ export const contentApi = {
     },
     getGroupContent: async (groupId) => {
         const { data } = await apiClient.get(`/groups/${groupId}/content`);
+        return data;
+    },
+    getContentFile: async (groupId, contentId) => {
+        const { data } = await apiClient.get(`/groups/${groupId}/content/${contentId}/file`, {
+            responseType: 'blob',
+        });
         return data;
     },
     deleteContent: async (groupId, contentId) => {

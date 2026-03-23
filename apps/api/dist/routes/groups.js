@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { createGroup, getUserGroups, getGroup, addMemberToGroup, } from '../controllers/groupController';
 import { asyncHandler } from '../utils/errors';
+import { authMiddleware } from '../middleware/auth';
 const router = Router();
+// Apply auth middleware to all routes
+router.use(authMiddleware);
 /**
  * @route POST /api/groups
  * @desc Create a new group

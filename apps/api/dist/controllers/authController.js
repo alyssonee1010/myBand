@@ -58,6 +58,7 @@ export const login = asyncHandler(async (req, res) => {
     }
     // Generate token
     const token = generateToken(user.id);
+    console.log(`[AUTH] Login successful for user ${email}, token issued`);
     res.json({
         token,
         user: {
