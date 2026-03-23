@@ -1,8 +1,14 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { ApiError, asyncHandler } from '../utils/errors';
+import { normalizeEmail } from '../utils/email';
 
 const prisma = new PrismaClient();
+const userSelection = {
+  id: true,
+  email: true,
+  name: true,
+};
 
 /**
  * Create a new group (band)
@@ -86,8 +92,24 @@ export const getGroup = asyncHandler(async (req: Request, res: Response) => {
       members: {
         include: {
           user: {
-            select: { id: true, email: true, name: true },
+            select: userSelection,
           },
+        },
+      },
+      invitations: {
+        where: {
+          status: 'pending',
+        },
+        include: {
+          invitedBy: {
+            select: userSelection,
+          },
+          invitee: {
+            select: userSelection,
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
         },
       },
       contents: true,
@@ -103,18 +125,18 @@ export const getGroup = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Add a user to a group via email
+ * Invite a user to a group via email
  */
-export const addMemberToGroup = asyncHandler(async (req: Request, res: Response) => {
+export const inviteMemberToGroup = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
   const { groupId } = req.params;
-  const { email } = req.body;
+  const normalizedEmail = req.body.email ? normalizeEmail(req.body.email) : '';
 
   if (!userId) {
     throw new ApiError(401, 'Unauthorized');
   }
 
-  if (!email) {
+  if (!normalizedEmail) {
     throw new ApiError(400, 'Email is required');
   }
 
@@ -124,37 +146,203 @@ export const addMemberToGroup = asyncHandler(async (req: Request, res: Response)
   });
 
   if (!adminMembership || adminMembership.role !== 'admin') {
-    throw new ApiError(403, 'Only admins can add members');
+    throw new ApiError(403, 'Only admins can invite members');
   }
 
-  // Find user by email
-  const targetUser = await prisma.user.findUnique({ where: { email } });
-  if (!targetUser) {
-    throw new ApiError(404, 'User not found');
-  }
-
-  // Check if already a member
-  const existingMembership = await prisma.groupMember.findUnique({
-    where: { userId_groupId: { userId: targetUser.id, groupId } },
-  });
-
-  if (existingMembership) {
-    throw new ApiError(400, 'User is already a member of this group');
-  }
-
-  // Add member
-  const newMembership = await prisma.groupMember.create({
-    data: {
-      userId: targetUser.id,
-      groupId,
-      role: 'member',
-    },
-    include: {
-      user: {
-        select: { id: true, email: true, name: true },
+  const targetUser = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: normalizedEmail,
+        mode: 'insensitive',
       },
     },
   });
 
-  res.status(201).json(newMembership);
+  if (targetUser) {
+    const existingMembership = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId: targetUser.id, groupId } },
+    });
+
+    if (existingMembership) {
+      throw new ApiError(400, 'User is already a member of this group');
+    }
+  }
+
+  const existingInvitation = await prisma.groupInvitation.findUnique({
+    where: {
+      groupId_email: {
+        groupId,
+        email: normalizedEmail,
+      },
+    },
+  });
+
+  if (existingInvitation?.status === 'pending') {
+    throw new ApiError(400, 'Invitation is already pending for this email');
+  }
+
+  const invitation = existingInvitation
+    ? await prisma.groupInvitation.update({
+        where: { id: existingInvitation.id },
+        data: {
+          invitedById: userId,
+          inviteeId: targetUser?.id ?? existingInvitation.inviteeId ?? null,
+          status: 'pending',
+          respondedAt: null,
+        },
+        include: {
+          invitedBy: {
+            select: userSelection,
+          },
+          invitee: {
+            select: userSelection,
+          },
+        },
+      })
+    : await prisma.groupInvitation.create({
+        data: {
+          email: normalizedEmail,
+          groupId,
+          invitedById: userId,
+          inviteeId: targetUser?.id,
+        },
+        include: {
+          invitedBy: {
+            select: userSelection,
+          },
+          invitee: {
+            select: userSelection,
+          },
+        },
+      });
+
+  res.status(existingInvitation ? 200 : 201).json(invitation);
+});
+
+/**
+ * Accept a pending invitation and join the group
+ */
+export const acceptGroupInvitation = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.userId;
+  const { groupId, invitationId } = req.params;
+
+  if (!userId) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: userSelection,
+  });
+
+  if (!currentUser) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const invitation = await prisma.groupInvitation.findUnique({
+    where: { id: invitationId },
+    include: {
+      group: true,
+      invitedBy: {
+        select: userSelection,
+      },
+      invitee: {
+        select: userSelection,
+      },
+    },
+  });
+
+  if (!invitation || invitation.groupId !== groupId) {
+    throw new ApiError(404, 'Invitation not found');
+  }
+
+  if (invitation.status !== 'pending') {
+    throw new ApiError(400, 'Invitation has already been accepted');
+  }
+
+  const canAcceptInvitation =
+    invitation.inviteeId === userId ||
+    normalizeEmail(invitation.email) === normalizeEmail(currentUser.email);
+
+  if (!canAcceptInvitation) {
+    throw new ApiError(403, 'This invitation is not for your account');
+  }
+
+  const existingMembership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId, groupId } },
+    include: {
+      user: {
+        select: userSelection,
+      },
+    },
+  });
+
+  if (existingMembership) {
+    const acceptedInvitation = await prisma.groupInvitation.update({
+      where: { id: invitationId },
+      data: {
+        inviteeId: userId,
+        status: 'accepted',
+        respondedAt: new Date(),
+      },
+      include: {
+        group: true,
+        invitedBy: {
+          select: userSelection,
+        },
+        invitee: {
+          select: userSelection,
+        },
+      },
+    });
+
+    res.json({
+      invitation: acceptedInvitation,
+      membership: existingMembership,
+      group: acceptedInvitation.group,
+    });
+    return;
+  }
+
+  const acceptedAt = new Date();
+  const result = await prisma.$transaction(async (tx) => {
+    const membership = await tx.groupMember.create({
+      data: {
+        userId,
+        groupId,
+        role: 'member',
+      },
+      include: {
+        user: {
+          select: userSelection,
+        },
+      },
+    });
+
+    const acceptedInvitation = await tx.groupInvitation.update({
+      where: { id: invitationId },
+      data: {
+        inviteeId: userId,
+        status: 'accepted',
+        respondedAt: acceptedAt,
+      },
+      include: {
+        group: true,
+        invitedBy: {
+          select: userSelection,
+        },
+        invitee: {
+          select: userSelection,
+        },
+      },
+    });
+
+    return {
+      membership,
+      invitation: acceptedInvitation,
+      group: acceptedInvitation.group,
+    };
+  });
+
+  res.json(result);
 });

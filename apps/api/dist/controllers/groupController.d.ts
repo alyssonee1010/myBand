@@ -12,7 +12,11 @@ export declare const getUserGroups: (req: Request, res: Response, next: import("
  */
 export declare const getGroup: (req: Request, res: Response, next: import("express").NextFunction) => void;
 /**
- * Add a user to a group via email
+ * Invite a user to a group via email
  */
-export declare const addMemberToGroup: (req: Request, res: Response, next: import("express").NextFunction) => void;
+export declare const inviteMemberToGroup: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
+ * Accept a pending invitation and join the group
+ */
+export declare const acceptGroupInvitation: (req: Request, res: Response, next: import("express").NextFunction) => void;
 //# sourceMappingURL=groupController.d.ts.map

@@ -3,7 +3,8 @@ import {
   createGroup,
   getUserGroups,
   getGroup,
-  addMemberToGroup,
+  inviteMemberToGroup,
+  acceptGroupInvitation,
 } from '../controllers/groupController';
 import { asyncHandler } from '../utils/errors';
 import { authMiddleware } from '../middleware/auth';
@@ -33,10 +34,16 @@ router.get('/', asyncHandler(getUserGroups));
 router.get('/:groupId', asyncHandler(getGroup));
 
 /**
- * @route POST /api/groups/:groupId/members
- * @desc Add a user to a group by email
+ * @route POST /api/groups/:groupId/invitations
+ * @desc Create a pending group invitation by email
  * @body { email }
  */
-router.post('/:groupId/members', asyncHandler(addMemberToGroup));
+router.post('/:groupId/invitations', asyncHandler(inviteMemberToGroup));
+
+/**
+ * @route POST /api/groups/:groupId/invitations/:invitationId/accept
+ * @desc Accept a pending invitation and join the group
+ */
+router.post('/:groupId/invitations/:invitationId/accept', asyncHandler(acceptGroupInvitation));
 
 export default router;

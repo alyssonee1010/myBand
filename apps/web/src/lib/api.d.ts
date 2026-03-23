@@ -8,7 +8,8 @@ export declare const authApi: {
 export declare const groupApi: {
     createGroup: (name: string, description?: string) => Promise<any>;
     getGroup: (groupId: string) => Promise<any>;
-    addMember: (groupId: string, email: string) => Promise<any>;
+    inviteMember: (groupId: string, email: string) => Promise<any>;
+    acceptInvitation: (groupId: string, invitationId: string) => Promise<any>;
 };
 export declare const contentApi: {
     uploadContent: (groupId: string, title: string, description: string, file: File) => Promise<any>;

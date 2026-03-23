@@ -83,8 +83,13 @@ export const groupApi = {
     return data.group ?? data
   },
 
-  addMember: async (groupId: string, email: string) => {
-    const { data } = await apiClient.post(`/groups/${groupId}/members`, { email })
+  inviteMember: async (groupId: string, email: string) => {
+    const { data } = await apiClient.post(`/groups/${groupId}/invitations`, { email })
+    return data
+  },
+
+  acceptInvitation: async (groupId: string, invitationId: string) => {
+    const { data } = await apiClient.post(`/groups/${groupId}/invitations/${invitationId}/accept`)
     return data
   },
 }

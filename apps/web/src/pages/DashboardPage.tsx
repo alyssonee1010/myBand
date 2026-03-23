@@ -8,7 +8,7 @@ import '../styles/dashboard.css'
 interface User {
   id: string
   email: string
-  name: string
+  name?: string
 }
 
 interface Group {
@@ -17,12 +17,22 @@ interface Group {
   description?: string
 }
 
+interface PendingInvitation {
+  id: string
+  email: string
+  createdAt: string
+  group: Group
+  invitedBy: User
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [user, setUser] = useState<User | null>(null)
   const [groups, setGroups] = useState<Group[]>([])
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [acceptingInvitationId, setAcceptingInvitationId] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -39,6 +49,7 @@ export default function DashboardPage() {
       const profileRes = await authApi.getProfile()
       setUser(profileRes.user)
       setGroups(profileRes.user.groups || [])
+      setPendingInvitations(profileRes.user.pendingInvitations || [])
     } catch (err) {
       localStorage.removeItem('token')
       navigate('/auth/login')
@@ -60,6 +71,18 @@ export default function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem('token')
     navigate('/')
+  }
+
+  const handleAcceptInvitation = async (invitation: PendingInvitation) => {
+    try {
+      setAcceptingInvitationId(invitation.id)
+      await groupApi.acceptInvitation(invitation.group.id, invitation.id)
+      await loadData()
+    } catch (err) {
+      alert('Failed to accept invitation')
+    } finally {
+      setAcceptingInvitationId(null)
+    }
   }
 
   if (loading) {
@@ -85,6 +108,47 @@ export default function DashboardPage() {
       </header>
 
       <main className="container-app">
+        {pendingInvitations.length > 0 && (
+          <section className="mb-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-emerald-950">Pending Invitations</h2>
+                <p className="text-sm text-emerald-800">
+                  Accept an invitation to join a band. You will only be added after you confirm here.
+                </p>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-emerald-800">
+                {pendingInvitations.length}
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {pendingInvitations.map((invitation) => (
+                <div
+                  key={invitation.id}
+                  className="rounded-xl border border-emerald-200 bg-white p-4"
+                >
+                  <p className="text-lg font-semibold text-gray-900">{invitation.group.name}</p>
+                  {invitation.group.description && (
+                    <p className="mt-1 text-sm text-gray-500">{invitation.group.description}</p>
+                  )}
+                  <p className="mt-3 text-sm text-gray-600">
+                    Invited by {invitation.invitedBy.name || invitation.invitedBy.email}
+                  </p>
+
+                  <button
+                    onClick={() => handleAcceptInvitation(invitation)}
+                    className="btn-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={acceptingInvitationId === invitation.id}
+                  >
+                    {acceptingInvitationId === invitation.id ? 'Accepting...' : 'Accept Invitation'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold">Your Bands</h2>
           <button onClick={() => setShowCreateModal(true)} className="btn-primary">

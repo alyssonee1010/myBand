@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { hashPassword, comparePassword } from '../utils/crypto';
 import { generateToken } from '../utils/jwt';
 import { ApiError, asyncHandler } from '../utils/errors';
+import { normalizeEmail } from '../utils/email';
 
 const prisma = new PrismaClient();
 
@@ -11,14 +12,22 @@ const prisma = new PrismaClient();
  */
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
+  const normalizedEmail = email ? normalizeEmail(email) : '';
 
   // Validation
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     throw new ApiError(400, 'Email and password are required');
   }
 
   // Check if user already exists
-  const existingUser = await prisma.user.findUnique({ where: { email } });
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: normalizedEmail,
+        mode: 'insensitive',
+      },
+    },
+  });
   if (existingUser) {
     throw new ApiError(400, 'Email already registered');
   }
@@ -29,9 +38,20 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   // Create user
   const user = await prisma.user.create({
     data: {
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
-      name: name || email.split('@')[0],
+      name: name || normalizedEmail.split('@')[0],
+    },
+  });
+
+  await prisma.groupInvitation.updateMany({
+    where: {
+      email: normalizedEmail,
+      inviteeId: null,
+      status: 'pending',
+    },
+    data: {
+      inviteeId: user.id,
     },
   });
 
@@ -53,12 +73,20 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
  */
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
+  const normalizedEmail = email ? normalizeEmail(email) : '';
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     throw new ApiError(400, 'Email and password are required');
   }
   // Find user
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: normalizedEmail,
+        mode: 'insensitive',
+      },
+    },
+  });
   if (!user) {
     throw new ApiError(401, 'Invalid email or password');
   }
@@ -71,7 +99,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   // Generate token
   const token = generateToken(user.id);
-  console.log(`[AUTH] Login successful for user ${email}, token issued`);
+  console.log(`[AUTH] Login successful for user ${normalizedEmail}, token issued`);
 
   res.json({
     token,
@@ -100,6 +128,24 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
           group: true,
         },
       },
+      receivedInvitations: {
+        where: {
+          status: 'pending',
+        },
+        include: {
+          group: true,
+          invitedBy: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
     },
   });
 
@@ -113,6 +159,7 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
       email: user.email,
       name: user.name,
       groups: user.memberships.map((m) => m.group),
+      pendingInvitations: user.receivedInvitations,
     },
   });
 });

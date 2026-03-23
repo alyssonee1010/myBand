@@ -23,8 +23,10 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  memberships GroupMember[]
-  contents    Content[]
+  memberships        GroupMember[]
+  contents           Content[]
+  sentInvitations    GroupInvitation[] @relation("SentGroupInvitations")
+  receivedInvitations GroupInvitation[] @relation("ReceivedGroupInvitations")
 
   @@index([email])
 }
@@ -41,9 +43,10 @@ model Group {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  members  GroupMember[]
-  contents Content[]
-  setlists Setlist[]
+  members      GroupMember[]
+  contents     Content[]
+  setlists     Setlist[]
+  invitations  GroupInvitation[]
 
   @@index([createdAt])
 }
@@ -64,6 +67,28 @@ model GroupMember {
   @@unique([userId, groupId]) // Prevent duplicate memberships
   @@index([userId])
   @@index([groupId])
+}
+
+model GroupInvitation {
+  id          String   @id @default(cuid())
+  email       String
+  groupId     String
+  invitedById String
+  inviteeId   String?
+  status      String   @default("pending") // "pending", "accepted"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  respondedAt DateTime?
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitedBy User  @relation("SentGroupInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+  invitee   User? @relation("ReceivedGroupInvitations", fields: [inviteeId], references: [id], onDelete: SetNull)
+
+  @@unique([groupId, email])
+  @@index([email])
+  @@index([groupId])
+  @@index([inviteeId])
+  @@index([status])
 }
 
 // ============================================================================
