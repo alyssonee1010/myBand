@@ -1,4 +1,4 @@
-import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../lib/api';
@@ -20,36 +20,29 @@ export default function LoginPage() {
         setError('');
         setSuccess('');
         setLoading(true);
-        // Client-side validation
         if (!formData.email.trim() || !formData.password.trim()) {
             setError('Email and password are required');
             setLoading(false);
             return;
         }
         try {
-            console.log('📡 Attempting login with:', { email: formData.email });
             const response = await authApi.login(formData.email, formData.password);
             if (!response.token) {
                 throw new Error('No token received from server');
             }
-            console.log('✅ Login successful, token stored');
-            setSuccess('Login successful! Redirecting...');
-            // Wait a moment to show success message, then navigate
+            setSuccess('Login successful. Redirecting...');
             setTimeout(() => {
                 navigate('/dashboard');
             }, 500);
         }
         catch (err) {
-            console.error('❌ Login error:', err);
-            // Handle both Error objects and plain error objects
             const errorMsg = err?.message || err?.toString() || 'Login failed';
             setError(errorMsg);
-            console.log('Error message displayed:', errorMsg);
         }
         finally {
             setLoading(false);
         }
     };
-    return (_jsx("div", { className: "min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center", children: _jsxs("div", { className: "card w-full max-w-md", children: [_jsx("h1", { className: "text-3xl font-bold mb-6 text-center", children: "Login to MyBand" }), error && (_jsx("div", { className: "mb-4 p-4 bg-red-50 border-l-4 border-red-600 text-red-800 rounded", children: _jsxs("div", { className: "flex justify-between items-start", children: [_jsxs("div", { children: [_jsx("p", { className: "font-semibold", children: "Login Failed" }), _jsx("p", { className: "text-sm mt-1", children: error })] }), _jsx("button", { type: "button", onClick: () => setError(''), className: "text-red-600 hover:text-red-800 font-bold", children: "\u2715" })] }) })), success && (_jsxs("div", { className: "mb-4 p-4 bg-green-50 border-l-4 border-green-600 text-green-800 rounded", children: [_jsx("p", { className: "font-semibold", children: "Success!" }), _jsx("p", { className: "text-sm mt-1", children: success })] })), _jsxs("form", { onSubmit: handleSubmit, className: "space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium mb-2", children: "Email" }), _jsx("input", { type: "email", name: "email", value: formData.email, onChange: handleChange, className: "input-field", required: true, disabled: loading, placeholder: "you@example.com" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium mb-2", children: "Password" }), _jsx("input", { type: "password", name: "password", value: formData.password, onChange: handleChange, className: "input-field", required: true, disabled: loading, placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" })] }), _jsx("button", { type: "submit", disabled: loading, className: "w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed", children: loading ? (_jsxs(_Fragment, { children: [_jsx("span", { className: "inline-block animate-spin mr-2", children: "\u23F3" }), "Logging in..."] })) : ('Login') })] }), _jsxs("p", { className: "text-center mt-6", children: ["Don't have an account?", ' ', _jsx(Link, { to: "/auth/register", className: "text-blue-600 font-bold hover:underline", children: "Sign up" })] })] }) }));
+    return (_jsx("div", { className: "app-shell flex min-h-screen items-center", children: _jsxs("main", { className: "container-app grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center", children: [_jsxs("section", { className: "glass-card bg-[linear-gradient(145deg,rgba(10,10,10,0.96),rgba(52,52,52,0.88))]", children: [_jsx("p", { className: "text-xs font-medium uppercase tracking-[0.32em] text-white/60", children: "MyBand" }), _jsxs("h1", { className: "mt-5 text-5xl font-bold tracking-tight text-white md:text-6xl", children: ["Step back into the ", _jsx("span", { className: "app-brand", children: "session." })] }), _jsx("p", { className: "mt-5 max-w-xl text-base leading-7 text-white/70", children: "Open your bands, accept invites, and pick up where the last rehearsal left off." })] }), _jsxs("section", { className: "card bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(238,238,234,0.76))]", children: [_jsx("p", { className: "section-kicker", children: "Log In" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Welcome back" }), error && (_jsx("div", { className: "mt-5 status-banner status-banner-muted", children: error })), success && (_jsx("div", { className: "mt-5 status-banner status-banner-strong", children: success })), _jsxs("form", { onSubmit: handleSubmit, className: "mt-6 space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "mb-2 block text-sm font-medium text-black/70", children: "Email" }), _jsx("input", { type: "email", name: "email", value: formData.email, onChange: handleChange, className: "input-field", required: true, disabled: loading, placeholder: "you@example.com" })] }), _jsxs("div", { children: [_jsx("label", { className: "mb-2 block text-sm font-medium text-black/70", children: "Password" }), _jsx("input", { type: "password", name: "password", value: formData.password, onChange: handleChange, className: "input-field", required: true, disabled: loading, placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" })] }), _jsx("button", { type: "submit", disabled: loading, className: "btn-primary w-full", children: loading ? 'Logging in...' : 'Login' })] }), _jsxs("p", { className: "mt-6 text-sm text-black/60", children: ["Don't have an account?", ' ', _jsx(Link, { to: "/auth/register", className: "font-semibold text-black underline-offset-4 hover:underline", children: "Sign up" })] })] })] }) }));
 }
 //# sourceMappingURL=LoginPage.js.map

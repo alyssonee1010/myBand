@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { authApi, groupApi } from '../lib/api'
 import GroupList from '../components/GroupList'
 import CreateGroupModal from '../components/CreateGroupModal'
+import { clearToken, getToken } from '../lib/tokenStorage'
 import '../styles/dashboard.css'
 
 interface User {
@@ -35,12 +36,12 @@ export default function DashboardPage() {
   const [acceptingInvitationId, setAcceptingInvitationId] = useState<string | null>(null)
 
   useEffect(() => {
-    loadData()
+    void loadData()
   }, [])
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = await getToken()
       if (!token) {
         navigate('/auth/login')
         return
@@ -51,7 +52,7 @@ export default function DashboardPage() {
       setGroups(profileRes.user.groups || [])
       setPendingInvitations(profileRes.user.pendingInvitations || [])
     } catch (err) {
-      localStorage.removeItem('token')
+      await clearToken()
       navigate('/auth/login')
     } finally {
       setLoading(false)
@@ -68,8 +69,8 @@ export default function DashboardPage() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
+  const handleLogout = async () => {
+    await clearToken()
     navigate('/')
   }
 
@@ -78,8 +79,15 @@ export default function DashboardPage() {
       setAcceptingInvitationId(invitation.id)
       await groupApi.acceptInvitation(invitation.group.id, invitation.id)
       await loadData()
-    } catch (err) {
-      alert('Failed to accept invitation')
+    } catch (error) {
+      const apiError = error as Error & { status?: number }
+
+      if (apiError.status === 400 || apiError.status === 404) {
+        await loadData()
+        alert('This invitation is no longer available.')
+      } else {
+        alert('Failed to accept invitation')
+      }
     } finally {
       setAcceptingInvitationId(null)
     }
@@ -87,19 +95,31 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl">Loading...</p>
+      <div className="app-shell flex min-h-screen items-center justify-center px-4">
+        <div className="card max-w-sm text-center">
+          <p className="section-kicker">Loading</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight">Pulling your latest band activity...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="container-app flex justify-between items-center">
-          <h1 className="text-2xl font-bold">🎸 MyBand</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">{user?.name || user?.email}</span>
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="container-app flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="section-kicker">Dashboard</p>
+            <h1 className="mt-3 text-4xl font-bold tracking-tight text-black md:text-5xl">
+              Welcome back, {user?.name || user?.email?.split('@')[0]}.
+            </h1>
+            <p className="mt-4 text-sm leading-6 text-black/60 md:text-base">
+              Keep your bands, invitations, and rehearsal prep in one focused workspace.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="stat-pill">{pendingInvitations.length} pending</span>
             <button onClick={handleLogout} className="btn-secondary">
               Logout
             </button>
@@ -107,38 +127,44 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="container-app">
+      <main className="container-app space-y-8">
         {pendingInvitations.length > 0 && (
-          <section className="mb-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
-            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-emerald-950">Pending Invitations</h2>
-                <p className="text-sm text-emerald-800">
-                  Accept an invitation to join a band. You will only be added after you confirm here.
+          <section className="card bg-[linear-gradient(135deg,rgba(17,17,17,0.98),rgba(58,58,58,0.92))] text-white">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs font-medium uppercase tracking-[0.3em] text-white/60">
+                  Pending Invitations
+                </p>
+                <h2 className="mt-3 text-3xl font-bold tracking-tight">Requests waiting on you</h2>
+                <p className="mt-2 text-sm leading-6 text-white/70">
+                  Accept an invitation to join a band. Revoked requests disappear automatically and
+                  can no longer be accepted.
                 </p>
               </div>
-              <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-emerald-800">
+              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-white/80">
                 {pendingInvitations.length}
               </span>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
               {pendingInvitations.map((invitation) => (
                 <div
                   key={invitation.id}
-                  className="rounded-xl border border-emerald-200 bg-white p-4"
+                  className="rounded-[24px] border border-white/10 bg-white/10 p-5 backdrop-blur-sm"
                 >
-                  <p className="text-lg font-semibold text-gray-900">{invitation.group.name}</p>
+                  <p className="text-2xl font-semibold tracking-tight">{invitation.group.name}</p>
                   {invitation.group.description && (
-                    <p className="mt-1 text-sm text-gray-500">{invitation.group.description}</p>
+                    <p className="mt-2 text-sm leading-6 text-white/60">
+                      {invitation.group.description}
+                    </p>
                   )}
-                  <p className="mt-3 text-sm text-gray-600">
+                  <p className="mt-4 text-sm text-white/60">
                     Invited by {invitation.invitedBy.name || invitation.invitedBy.email}
                   </p>
 
                   <button
-                    onClick={() => handleAcceptInvitation(invitation)}
-                    className="btn-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => void handleAcceptInvitation(invitation)}
+                    className="btn-secondary mt-5 w-full border-white/20 bg-white text-black hover:border-white hover:bg-transparent hover:text-white"
                     disabled={acceptingInvitationId === invitation.id}
                   >
                     {acceptingInvitationId === invitation.id ? 'Accepting...' : 'Accept Invitation'}
@@ -149,16 +175,26 @@ export default function DashboardPage() {
           </section>
         )}
 
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold">Your Bands</h2>
+        <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="section-kicker">Your Bands</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight">Everything you’re building</h2>
+            <p className="mt-2 text-sm leading-6 text-black/60">
+              Open a band to manage members, shared files, and setlists.
+            </p>
+          </div>
           <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-            + New Band
+            Create New Band
           </button>
-        </div>
+        </section>
 
         {groups.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">No bands yet. Create one to get started!</p>
+          <div className="card bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(228,228,224,0.72))] py-16 text-center">
+            <p className="text-2xl font-semibold tracking-tight">No bands yet</p>
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-black/60">
+              Create your first band to start inviting members, uploading charts, and building
+              setlists together.
+            </p>
           </div>
         ) : (
           <GroupList groups={groups} />

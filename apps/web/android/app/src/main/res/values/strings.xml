@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MyBand</string>
+    <string name="title_activity_main">MyBand</string>
+    <string name="package_name">com.myband.mobile</string>
+    <string name="custom_url_scheme">com.myband.mobile</string>
+</resources>

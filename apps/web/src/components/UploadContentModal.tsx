@@ -36,41 +36,45 @@ export default function UploadContentModal({ onClose, onUpload }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="card w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6">Upload Content</h2>
+    <div className="modal-overlay">
+      <div className="card modal-card max-w-md">
+        <p className="section-kicker">Upload</p>
+        <h2 className="mt-3 text-3xl font-bold tracking-tight">Add Shared Content</h2>
+        <p className="mt-2 text-sm leading-6 text-black/60">
+          Upload a PDF or image so the whole band can access it in one place.
+        </p>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mt-5 status-banner status-banner-muted">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Title *</label>
+            <label className="mb-2 block text-sm font-medium text-black/70">Title</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="input-field"
-              placeholder="e.g., Song Lyrics"
+              placeholder="e.g., Intro arrangement"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Description</label>
+            <label className="mb-2 block text-sm font-medium text-black/70">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="input-field resize-none h-20"
-              placeholder="Optional description..."
+              className="input-field h-24 resize-none"
+              placeholder="A short note for the band..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">File (PDF or Image) *</label>
+            <label className="mb-2 block text-sm font-medium text-black/70">File</label>
             <input
               type="file"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
@@ -78,23 +82,23 @@ export default function UploadContentModal({ onClose, onUpload }: Props) {
               accept=".pdf,image/*"
               required
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-black/40">
               Max 10MB for PDFs, 5MB for images
             </p>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 btn-secondary"
+              className="btn-secondary flex-1"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 btn-primary disabled:opacity-50"
+              className="btn-primary flex-1"
               disabled={loading}
             >
               {loading ? 'Uploading...' : 'Upload'}

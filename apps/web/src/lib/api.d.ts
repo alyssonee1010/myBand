@@ -9,6 +9,7 @@ export declare const groupApi: {
     createGroup: (name: string, description?: string) => Promise<any>;
     getGroup: (groupId: string) => Promise<any>;
     inviteMember: (groupId: string, email: string) => Promise<any>;
+    removeInvitation: (groupId: string, invitationId: string) => Promise<any>;
     acceptInvitation: (groupId: string, invitationId: string) => Promise<any>;
 };
 export declare const contentApi: {

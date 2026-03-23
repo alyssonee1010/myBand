@@ -1,4 +1,4 @@
-import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../lib/api';
@@ -20,7 +20,6 @@ export default function RegisterPage() {
         setError('');
         setSuccess('');
         setLoading(true);
-        // Client-side validation
         if (!formData.email.trim() || !formData.password.trim()) {
             setError('Email and password are required');
             setLoading(false);
@@ -32,29 +31,23 @@ export default function RegisterPage() {
             return;
         }
         try {
-            console.log('📡 Attempting registration with:', { email: formData.email, name: formData.name });
             const response = await authApi.register(formData.email, formData.password, formData.name);
             if (!response.token) {
                 throw new Error('No token received from server');
             }
-            console.log('✅ Registration successful, token stored');
-            setSuccess('Account created! Redirecting to dashboard...');
-            // Wait a moment to show success message, then navigate
+            setSuccess('Account created. Redirecting to your dashboard...');
             setTimeout(() => {
                 navigate('/dashboard');
             }, 500);
         }
         catch (err) {
-            console.error('❌ Registration error:', err);
-            // Handle both Error objects and plain error objects
             const errorMsg = err?.message || err?.toString() || 'Registration failed';
             setError(errorMsg);
-            console.log('Error message displayed:', errorMsg);
         }
         finally {
             setLoading(false);
         }
     };
-    return (_jsx("div", { className: "min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center", children: _jsxs("div", { className: "card w-full max-w-md", children: [_jsx("h1", { className: "text-3xl font-bold mb-6 text-center", children: "Join MyBand" }), error && (_jsx("div", { className: "mb-4 p-4 bg-red-50 border-l-4 border-red-600 text-red-800 rounded", children: _jsxs("div", { className: "flex justify-between items-start", children: [_jsxs("div", { children: [_jsx("p", { className: "font-semibold", children: "Registration Failed" }), _jsx("p", { className: "text-sm mt-1", children: error })] }), _jsx("button", { type: "button", onClick: () => setError(''), className: "text-red-600 hover:text-red-800 font-bold", children: "\u2715" })] }) })), success && (_jsxs("div", { className: "mb-4 p-4 bg-green-50 border-l-4 border-green-600 text-green-800 rounded", children: [_jsx("p", { className: "font-semibold", children: "Success!" }), _jsx("p", { className: "text-sm mt-1", children: success })] })), _jsxs("form", { onSubmit: handleSubmit, className: "space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium mb-2", children: "Name (optional)" }), _jsx("input", { type: "text", name: "name", value: formData.name, onChange: handleChange, className: "input-field", disabled: loading, placeholder: "Your Name" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium mb-2", children: "Email" }), _jsx("input", { type: "email", name: "email", value: formData.email, onChange: handleChange, className: "input-field", required: true, disabled: loading, placeholder: "you@example.com" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium mb-2", children: "Password" }), _jsx("input", { type: "password", name: "password", value: formData.password, onChange: handleChange, className: "input-field", required: true, disabled: loading, placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" }), _jsx("p", { className: "text-xs text-gray-500 mt-1", children: "At least 6 characters" })] }), _jsx("button", { type: "submit", disabled: loading, className: "w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed", children: loading ? (_jsxs(_Fragment, { children: [_jsx("span", { className: "inline-block animate-spin mr-2", children: "\u23F3" }), "Creating account..."] })) : ('Sign Up') })] }), _jsxs("p", { className: "text-center mt-6", children: ["Already have an account?", ' ', _jsx(Link, { to: "/auth/login", className: "text-blue-600 font-bold hover:underline", children: "Login" })] })] }) }));
+    return (_jsx("div", { className: "app-shell flex min-h-screen items-center", children: _jsxs("main", { className: "container-app grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center", children: [_jsxs("section", { className: "glass-card bg-[linear-gradient(145deg,rgba(10,10,10,0.96),rgba(52,52,52,0.88))]", children: [_jsx("p", { className: "text-xs font-medium uppercase tracking-[0.32em] text-white/60", children: "MyBand" }), _jsxs("h1", { className: "mt-5 text-5xl font-bold tracking-tight text-white md:text-6xl", children: ["Build a tighter ", _jsx("span", { className: "app-brand", children: "band workflow." })] }), _jsx("p", { className: "mt-5 max-w-xl text-base leading-7 text-white/70", children: "Create your account, accept invitations, and start organizing rehearsals with a calmer interface." })] }), _jsxs("section", { className: "card bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(238,238,234,0.76))]", children: [_jsx("p", { className: "section-kicker", children: "Sign Up" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Create your account" }), error && (_jsx("div", { className: "mt-5 status-banner status-banner-muted", children: error })), success && (_jsx("div", { className: "mt-5 status-banner status-banner-strong", children: success })), _jsxs("form", { onSubmit: handleSubmit, className: "mt-6 space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "mb-2 block text-sm font-medium text-black/70", children: "Name" }), _jsx("input", { type: "text", name: "name", value: formData.name, onChange: handleChange, className: "input-field", disabled: loading, placeholder: "Your name" })] }), _jsxs("div", { children: [_jsx("label", { className: "mb-2 block text-sm font-medium text-black/70", children: "Email" }), _jsx("input", { type: "email", name: "email", value: formData.email, onChange: handleChange, className: "input-field", required: true, disabled: loading, placeholder: "you@example.com" })] }), _jsxs("div", { children: [_jsx("label", { className: "mb-2 block text-sm font-medium text-black/70", children: "Password" }), _jsx("input", { type: "password", name: "password", value: formData.password, onChange: handleChange, className: "input-field", required: true, disabled: loading, placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" }), _jsx("p", { className: "mt-2 text-xs uppercase tracking-[0.18em] text-black/40", children: "At least 6 characters" })] }), _jsx("button", { type: "submit", disabled: loading, className: "btn-primary w-full", children: loading ? 'Creating account...' : 'Sign Up' })] }), _jsxs("p", { className: "mt-6 text-sm text-black/60", children: ["Already have an account?", ' ', _jsx(Link, { to: "/auth/login", className: "font-semibold text-black underline-offset-4 hover:underline", children: "Login" })] })] })] }) }));
 }
 //# sourceMappingURL=RegisterPage.js.map

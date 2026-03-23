@@ -4,6 +4,7 @@ import {
   getUserGroups,
   getGroup,
   inviteMemberToGroup,
+  revokeGroupInvitation,
   acceptGroupInvitation,
 } from '../controllers/groupController';
 import { asyncHandler } from '../utils/errors';
@@ -39,6 +40,12 @@ router.get('/:groupId', asyncHandler(getGroup));
  * @body { email }
  */
 router.post('/:groupId/invitations', asyncHandler(inviteMemberToGroup));
+
+/**
+ * @route DELETE /api/groups/:groupId/invitations/:invitationId
+ * @desc Revoke a pending invitation so it can no longer be accepted
+ */
+router.delete('/:groupId/invitations/:invitationId', asyncHandler(revokeGroupInvitation));
 
 /**
  * @route POST /api/groups/:groupId/invitations/:invitationId/accept

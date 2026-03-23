@@ -1,42 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --app-ink: #121212;
+  --app-muted: #5c5c61;
+  --app-line: rgba(18, 18, 18, 0.12);
+  --app-line-strong: rgba(18, 18, 18, 0.7);
+  --app-paper: rgba(255, 255, 255, 0.82);
+  --app-paper-strong: rgba(255, 255, 255, 0.94);
+  --app-paper-soft: rgba(255, 255, 255, 0.62);
+  --app-shadow: 0 24px 80px rgba(10, 10, 10, 0.12);
+}
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  background: #070707;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  color: var(--app-ink);
+  font-family: 'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 24%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 22%),
+    linear-gradient(180deg, #0b0b0b 0%, #151515 18%, #d7d7d3 58%, #efefea 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+a {
+  color: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+}
+
+.app-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.18), transparent 18%),
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 255, 0.1), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 35%);
+}
+
+.app-brand {
+  font-family: 'Instrument Serif', 'Times New Roman', serif;
+  font-style: italic;
+}
+
 /* Utility classes */
 .container-app {
-  @apply max-w-7xl mx-auto px-4 py-8;
+  @apply mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8 lg:px-8;
+}
+
+.app-header {
+  @apply sticky top-0 z-30 border-b border-black/10 bg-white/70 backdrop-blur-xl;
+}
+
+.app-link {
+  @apply text-sm font-medium uppercase tracking-[0.22em] text-black/70 transition hover:text-black;
+}
+
+.section-kicker {
+  @apply text-xs font-medium uppercase tracking-[0.3em] text-black/60;
+}
+
+.soft-label {
+  @apply text-sm text-black/60;
+}
+
+.stat-pill {
+  @apply inline-flex items-center rounded-full border border-black/10 bg-white/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-black/60;
 }
 
 .btn-primary {
-  @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium;
+  @apply inline-flex items-center justify-center rounded-full border border-black bg-black px-5 py-2.5 text-sm font-medium text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:text-black disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .btn-secondary {
-  @apply px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium;
+  @apply inline-flex items-center justify-center rounded-full border border-black/20 bg-white/70 px-5 py-2.5 text-sm font-medium text-black transition duration-200 hover:-translate-y-0.5 hover:border-black hover:bg-white disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .btn-danger {
-  @apply px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium;
+  @apply inline-flex items-center justify-center rounded-full border border-black/20 bg-zinc-200 px-5 py-2.5 text-sm font-medium text-black transition duration-200 hover:-translate-y-0.5 hover:bg-black hover:text-white disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .input-field {
-  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+  @apply w-full rounded-2xl border border-black/20 bg-white/80 px-4 py-3 text-black placeholder:text-black/40 focus:border-black focus:outline-none focus:ring-0;
 }
 
 .card {
-  @apply bg-white rounded-lg shadow p-6;
+  @apply rounded-[28px] border border-black/10 bg-white/80 p-6 shadow-[0_24px_80px_rgba(10,10,10,0.08)] backdrop-blur-sm;
+}
+
+.glass-card {
+  @apply rounded-[32px] border border-white/40 bg-white/10 p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-xl;
+}
+
+.status-banner {
+  @apply rounded-2xl border px-4 py-3 text-sm;
+}
+
+.status-banner-muted {
+  @apply border-black/10 bg-white/60 text-black/70;
+}
+
+.status-banner-strong {
+  @apply border-black bg-black text-white;
+}
+
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm;
+}
+
+.modal-card {
+  @apply w-full border border-black/10 bg-[rgba(247,247,243,0.96)];
+}
+
+input[type='file'].input-field {
+  @apply cursor-pointer py-2.5;
+}
+
+input[type='file'].input-field::file-selector-button {
+  @apply mr-4 rounded-full border border-black/20 bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-black hover:text-white;
 }
 
 textarea.input-field {

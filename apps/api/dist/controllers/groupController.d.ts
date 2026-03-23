@@ -16,6 +16,10 @@ export declare const getGroup: (req: Request, res: Response, next: import("expre
  */
 export declare const inviteMemberToGroup: (req: Request, res: Response, next: import("express").NextFunction) => void;
 /**
+ * Revoke a pending invitation so it no longer appears or can be accepted
+ */
+export declare const revokeGroupInvitation: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
  * Accept a pending invitation and join the group
  */
 export declare const acceptGroupInvitation: (req: Request, res: Response, next: import("express").NextFunction) => void;

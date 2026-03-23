@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -6,8 +6,11 @@ import DashboardPage from './pages/DashboardPage'
 import GroupPage from './pages/GroupPage'
 import SetlistsPage from './pages/SetlistsPage'
 import SetlistPage from './pages/SetlistPage'
+import { isNativePlatform } from './lib/platform'
 
 function App() {
+  const Router = isNativePlatform ? HashRouter : BrowserRouter
+
   return (
     <Router>
       <Routes>

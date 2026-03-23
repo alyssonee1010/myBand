@@ -74,37 +74,58 @@ export default function SetlistsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl">Loading...</p>
+      <div className="app-shell flex min-h-screen items-center justify-center px-4">
+        <div className="card max-w-sm text-center">
+          <p className="section-kicker">Loading</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight">Gathering your setlists...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
+    <div className="app-shell">
+      <header className="app-header">
         <div className="container-app">
           <button
             onClick={() => navigate(`/groups/${groupId}`)}
-            className="text-blue-600 hover:underline mb-4"
+            className="app-link mb-5 inline-flex items-center gap-2"
           >
-            ← Back to Band
+            <span aria-hidden="true">←</span>
+            <span>Back to Band</span>
           </button>
-          <h1 className="text-3xl font-bold">{group?.name} Setlists</h1>
-          {group?.description && <p className="text-gray-600">{group.description}</p>}
+
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="section-kicker">Setlists</p>
+              <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
+                {group?.name} setlists
+              </h1>
+              {group?.description && (
+                <p className="mt-4 text-sm leading-6 text-black/60 md:text-base">
+                  {group.description}
+                </p>
+              )}
+            </div>
+            <span className="stat-pill">{setlists.length} total</span>
+          </div>
         </div>
       </header>
 
       <main className="container-app space-y-8">
-        <form onSubmit={handleCreateSetlist} className="card space-y-4">
+        <form
+          onSubmit={handleCreateSetlist}
+          className="card bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(233,233,229,0.74))]"
+        >
           <div>
-            <h2 className="text-2xl font-bold">Create Setlist</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Start a new setlist for rehearsals or gigs.
+            <p className="section-kicker">Create</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight">Build a new setlist</h2>
+            <p className="mt-2 text-sm leading-6 text-black/60">
+              Start a new rehearsal or gig flow and add songs in the order you want to perform them.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row">
+          <div className="mt-6 flex flex-col gap-3 md:flex-row">
             <input
               type="text"
               value={newSetlistName}
@@ -116,37 +137,51 @@ export default function SetlistsPage() {
             />
             <button
               type="submit"
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary"
               disabled={creating}
             >
-              {creating ? 'Creating...' : '+ New Setlist'}
+              {creating ? 'Creating...' : 'Create Setlist'}
             </button>
           </div>
         </form>
 
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">All Setlists</h2>
-            <span className="text-sm text-gray-500">{setlists.length} total</span>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="section-kicker">Library</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight">All Setlists</h2>
+            </div>
+            <span className="soft-label">{setlists.length} total</span>
           </div>
 
           {setlists.length === 0 ? (
-            <div className="card text-center py-12">
-              <p className="text-gray-500">No setlists yet. Create one to start adding songs.</p>
+            <div className="card mt-5 py-16 text-center">
+              <p className="text-2xl font-semibold tracking-tight">No setlists yet</p>
+              <p className="mt-3 text-sm leading-6 text-black/60">
+                Create one to start arranging songs for rehearsal or performance.
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {setlists.map((setlist) => (
+            <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-2">
+              {setlists.map((setlist, index) => (
                 <Link
                   key={setlist.id}
                   to={`/groups/${groupId}/setlists/${setlist.id}`}
-                  className="card hover:shadow-lg transition"
+                  className="group block"
                 >
-                  <h3 className="text-xl font-bold mb-2">{setlist.name}</h3>
-                  <p className="text-gray-600 mb-4">
-                    {setlist.items.length} {setlist.items.length === 1 ? 'song' : 'songs'}
-                  </p>
-                  <p className="text-blue-600 hover:underline">Open setlist →</p>
+                  <div className="card h-full bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(236,236,232,0.7))] transition duration-200 group-hover:-translate-y-1 group-hover:border-black/20">
+                    <p className="section-kicker">Setlist {String(index + 1).padStart(2, '0')}</p>
+                    <h3 className="mt-4 text-2xl font-bold tracking-tight">{setlist.name}</h3>
+                    <p className="mt-3 text-sm leading-6 text-black/60">
+                      {setlist.items.length} {setlist.items.length === 1 ? 'song' : 'songs'}
+                    </p>
+                    <div className="mt-8 flex items-center justify-between">
+                      <span className="stat-pill">Open</span>
+                      <span className="text-lg text-black/60 transition group-hover:translate-x-1 group-hover:text-black">
+                        →
+                      </span>
+                    </div>
+                  </div>
                 </Link>
               ))}
             </div>

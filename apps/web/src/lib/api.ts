@@ -1,7 +1,40 @@
 import axios from 'axios'
+import { getLoginPath, isNativePlatform, platform } from './platform'
+import { clearToken, getToken, setToken } from './tokenStorage'
 
-const API_BASE_URL = 'http://localhost:3001/api'
-export const API_ORIGIN = new URL(API_BASE_URL).origin
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+const nativeDevApiBaseUrl = import.meta.env.VITE_NATIVE_DEV_API_BASE_URL?.trim()
+
+function resolveApiBaseUrl() {
+  if (configuredApiBaseUrl) {
+    return configuredApiBaseUrl
+  }
+
+  if (import.meta.env.DEV) {
+    if (isNativePlatform) {
+      return nativeDevApiBaseUrl || 'http://localhost:3001/api'
+    }
+
+    return '/api'
+  }
+
+  if (isNativePlatform) {
+    console.warn(
+      `[MyBand] VITE_API_BASE_URL is not set for ${platform}. Native release builds need an HTTPS API URL.`
+    )
+    return nativeDevApiBaseUrl || 'http://localhost:3001/api'
+  }
+
+  return '/api'
+}
+
+const API_BASE_URL = resolveApiBaseUrl()
+export const API_ORIGIN = new URL(API_BASE_URL, window.location.origin).origin
+
+function isAuthRoute() {
+  const currentLocation = `${window.location.pathname}${window.location.hash}`
+  return currentLocation.includes('/auth/')
+}
 
 // Get token from localStorage and attach to requests
 const apiClient = axios.create({
@@ -12,8 +45,8 @@ const apiClient = axios.create({
 })
 
 // Add token to requests
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+apiClient.interceptors.request.use(async (config) => {
+  const token = await getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -23,7 +56,7 @@ apiClient.interceptors.request.use((config) => {
 // Handle errors
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error.response?.status
     const data = error.response?.data
 
@@ -32,9 +65,9 @@ apiClient.interceptors.response.use(
 
     // Only redirect to login for 401 on protected routes (not during auth)
     // Don't redirect if we're on login/register pages
-    if (status === 401 && !window.location.pathname.includes('/auth/')) {
-      localStorage.removeItem('token')
-      window.location.href = '/auth/login'
+    if (status === 401 && !isAuthRoute()) {
+      await clearToken()
+      window.location.href = getLoginPath()
     }
     
     // Create an error object that preserves the message
@@ -52,7 +85,7 @@ export const authApi = {
   register: async (email: string, password: string, name?: string) => {
     const { data } = await apiClient.post('/auth/register', { email, password, name })
     if (data.token) {
-      localStorage.setItem('token', data.token)
+      await setToken(data.token)
     }
     return data
   },
@@ -60,7 +93,7 @@ export const authApi = {
   login: async (email: string, password: string) => {
     const { data } = await apiClient.post('/auth/login', { email, password })
     if (data.token) {
-      localStorage.setItem('token', data.token)
+      await setToken(data.token)
     }
     return data
   },
@@ -85,6 +118,11 @@ export const groupApi = {
 
   inviteMember: async (groupId: string, email: string) => {
     const { data } = await apiClient.post(`/groups/${groupId}/invitations`, { email })
+    return data
+  },
+
+  removeInvitation: async (groupId: string, invitationId: string) => {
+    const { data } = await apiClient.delete(`/groups/${groupId}/invitations/${invitationId}`)
     return data
   },
 

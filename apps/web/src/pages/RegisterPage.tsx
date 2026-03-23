@@ -23,7 +23,6 @@ export default function RegisterPage() {
     setSuccess('')
     setLoading(true)
 
-    // Client-side validation
     if (!formData.email.trim() || !formData.password.trim()) {
       setError('Email and password are required')
       setLoading(false)
@@ -37,127 +36,116 @@ export default function RegisterPage() {
     }
 
     try {
-      console.log('📡 Attempting registration with:', { email: formData.email, name: formData.name })
       const response = await authApi.register(formData.email, formData.password, formData.name)
-      
+
       if (!response.token) {
         throw new Error('No token received from server')
       }
-      
-      console.log('✅ Registration successful, token stored')
-      setSuccess('Account created! Redirecting to dashboard...')
-      
-      // Wait a moment to show success message, then navigate
+
+      setSuccess('Account created. Redirecting to your dashboard...')
       setTimeout(() => {
         navigate('/dashboard')
       }, 500)
     } catch (err: any) {
-      console.error('❌ Registration error:', err)
-      // Handle both Error objects and plain error objects
       const errorMsg = err?.message || err?.toString() || 'Registration failed'
       setError(errorMsg)
-      console.log('Error message displayed:', errorMsg)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
-      <div className="card w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-6 text-center">Join MyBand</h1>
+    <div className="app-shell flex min-h-screen items-center">
+      <main className="container-app grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center">
+        <section className="glass-card bg-[linear-gradient(145deg,rgba(10,10,10,0.96),rgba(52,52,52,0.88))]">
+          <p className="text-xs font-medium uppercase tracking-[0.32em] text-white/60">MyBand</p>
+          <h1 className="mt-5 text-5xl font-bold tracking-tight text-white md:text-6xl">
+            Build a tighter <span className="app-brand">band workflow.</span>
+          </h1>
+          <p className="mt-5 max-w-xl text-base leading-7 text-white/70">
+            Create your account, accept invitations, and start organizing rehearsals with a calmer
+            interface.
+          </p>
+        </section>
 
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-600 text-red-800 rounded">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-semibold">Registration Failed</p>
-                <p className="text-sm mt-1">{error}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setError('')}
-                className="text-red-600 hover:text-red-800 font-bold"
-              >
-                ✕
-              </button>
+        <section className="card bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(238,238,234,0.76))]">
+          <p className="section-kicker">Sign Up</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight">Create your account</h2>
+
+          {error && (
+            <div className="mt-5 status-banner status-banner-muted">
+              {error}
             </div>
-          </div>
-        )}
+          )}
 
-        {success && (
-          <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-600 text-green-800 rounded">
-            <p className="font-semibold">Success!</p>
-            <p className="text-sm mt-1">{success}</p>
-          </div>
-        )}
+          {success && (
+            <div className="mt-5 status-banner status-banner-strong">
+              {success}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Name (optional)</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="input-field"
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-black/70">Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="input-field"
+                disabled={loading}
+                placeholder="Your name"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-black/70">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="input-field"
+                required
+                disabled={loading}
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-black/70">Password</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="input-field"
+                required
+                disabled={loading}
+                placeholder="••••••••"
+              />
+              <p className="mt-2 text-xs uppercase tracking-[0.18em] text-black/40">
+                At least 6 characters
+              </p>
+            </div>
+
+            <button
+              type="submit"
               disabled={loading}
-              placeholder="Your Name"
-            />
-          </div>
+              className="btn-primary w-full"
+            >
+              {loading ? 'Creating account...' : 'Sign Up'}
+            </button>
+          </form>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="input-field"
-              required
-              disabled={loading}
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="input-field"
-              required
-              disabled={loading}
-              placeholder="••••••••"
-            />
-            <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <span className="inline-block animate-spin mr-2">⏳</span>
-                Creating account...
-              </>
-            ) : (
-              'Sign Up'
-            )}
-          </button>
-        </form>
-
-        <p className="text-center mt-6">
-          Already have an account?{' '}
-          <Link to="/auth/login" className="text-blue-600 font-bold hover:underline">
-            Login
-          </Link>
-        </p>
-      </div>
+          <p className="mt-6 text-sm text-black/60">
+            Already have an account?{' '}
+            <Link to="/auth/login" className="font-semibold text-black underline-offset-4 hover:underline">
+              Login
+            </Link>
+          </p>
+        </section>
+      </main>
     </div>
   )
 }

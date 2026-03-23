@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { authApi, groupApi, contentApi } from '../lib/api';
+import { authApi, contentApi, groupApi } from '../lib/api';
 import ContentList from '../components/ContentList';
 import UploadContentModal from '../components/UploadContentModal';
 import '../styles/group.css';
@@ -16,6 +16,8 @@ export default function GroupPage() {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteStatus, setInviteStatus] = useState(null);
+    const [pendingInvitationStatus, setPendingInvitationStatus] = useState(null);
+    const [removingInvitationId, setRemovingInvitationId] = useState(null);
     useEffect(() => {
         if (groupId) {
             void loadGroup(true);
@@ -78,6 +80,7 @@ export default function GroupPage() {
         }
         setInviteLoading(true);
         setInviteStatus(null);
+        setPendingInvitationStatus(null);
         try {
             const invitation = await groupApi.inviteMember(groupId, normalizedEmail);
             setGroup((currentGroup) => {
@@ -119,8 +122,52 @@ export default function GroupPage() {
             setInviteLoading(false);
         }
     };
+    const handleRemoveInvitation = async (invitation) => {
+        if (!groupId) {
+            return;
+        }
+        const shouldRemove = confirm(`Remove the pending request for ${invitation.email}?`);
+        if (!shouldRemove) {
+            return;
+        }
+        setRemovingInvitationId(invitation.id);
+        setPendingInvitationStatus(null);
+        try {
+            await groupApi.removeInvitation(groupId, invitation.id);
+            setGroup((currentGroup) => {
+                if (!currentGroup) {
+                    return currentGroup;
+                }
+                return {
+                    ...currentGroup,
+                    invitations: currentGroup.invitations.filter((currentInvitation) => currentInvitation.id !== invitation.id),
+                };
+            });
+            setPendingInvitationStatus({
+                tone: 'success',
+                text: `${invitation.email} has been removed from pending requests.`,
+            });
+        }
+        catch (error) {
+            const apiError = error;
+            let message = apiError.message || 'Failed to remove this pending request.';
+            if (apiError.status === 403) {
+                message = 'Only band admins can remove pending requests.';
+            }
+            else if (apiError.status === 400) {
+                message = 'This request is no longer pending.';
+            }
+            setPendingInvitationStatus({
+                tone: 'error',
+                text: message,
+            });
+        }
+        finally {
+            setRemovingInvitationId(null);
+        }
+    };
     if (loading) {
-        return (_jsx("div", { className: "min-h-screen flex items-center justify-center", children: _jsx("p", { className: "text-xl", children: "Loading..." }) }));
+        return (_jsx("div", { className: "app-shell flex min-h-screen items-center justify-center px-4", children: _jsxs("div", { className: "card max-w-sm text-center", children: [_jsx("p", { className: "section-kicker", children: "Loading" }), _jsx("p", { className: "mt-3 text-xl font-semibold tracking-tight", children: "Setting up your band workspace..." })] }) }));
     }
     const currentMembership = group?.members.find((member) => member.user.id === currentUser?.id);
     const canInviteMembers = currentMembership?.role === 'admin';
@@ -133,15 +180,17 @@ export default function GroupPage() {
         return leftLabel.localeCompare(rightLabel);
     });
     const pendingInvitations = group?.invitations || [];
-    return (_jsxs("div", { className: "min-h-screen bg-gray-50", children: [_jsx("header", { className: "bg-white shadow", children: _jsxs("div", { className: "container-app", children: [_jsx("button", { onClick: () => navigate('/dashboard'), className: "text-blue-600 hover:underline mb-4", children: "\u2190 Back to Bands" }), _jsx("h1", { className: "text-3xl font-bold", children: group?.name }), group?.description && _jsx("p", { className: "text-gray-600", children: group.description })] }) }), _jsx("main", { className: "container-app", children: _jsxs("div", { className: "grid gap-8 xl:grid-cols-[minmax(0,2fr)_360px]", children: [_jsxs("section", { className: "space-y-6", children: [_jsxs("div", { className: "flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between", children: [_jsxs("div", { children: [_jsx("h2", { className: "text-2xl font-bold", children: "Content Library" }), _jsx("p", { className: "mt-1 text-sm text-gray-500", children: "Keep charts, lyrics, recordings, and references in one place for everyone." })] }), _jsx("button", { onClick: () => setShowUploadModal(true), className: "btn-primary", children: "+ Upload Content" })] }), _jsx("div", { className: "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm", children: contents.length === 0 ? (_jsx("div", { className: "text-center py-12", children: _jsx("p", { className: "text-gray-500 mb-4", children: "No content yet. Upload something to get started!" }) })) : (_jsx(ContentList, { contents: contents, onDelete: handleDeleteContent, groupId: groupId })) })] }), _jsxs("aside", { className: "space-y-6", children: [_jsxs("section", { className: "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm", children: [_jsxs("div", { className: "flex items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("h2", { className: "text-xl font-bold", children: "Band Members" }), _jsx("p", { className: "mt-1 text-sm text-gray-500", children: "Contact everyone in the band and keep roles visible." })] }), _jsx("span", { className: "rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700", children: sortedMembers.length })] }), _jsx("div", { className: "mt-5 space-y-3", children: sortedMembers.map((member) => {
+    return (_jsxs("div", { className: "app-shell", children: [_jsx("header", { className: "app-header", children: _jsxs("div", { className: "container-app", children: [_jsxs("button", { onClick: () => navigate('/dashboard'), className: "app-link mb-5 inline-flex items-center gap-2", children: [_jsx("span", { "aria-hidden": "true", children: "\u2190" }), _jsx("span", { children: "Back to Bands" })] }), _jsxs("div", { className: "flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between", children: [_jsxs("div", { className: "max-w-3xl", children: [_jsx("p", { className: "section-kicker", children: "Band Workspace" }), _jsx("h1", { className: "mt-3 text-4xl font-bold tracking-tight text-black md:text-5xl", children: group?.name }), group?.description && (_jsx("p", { className: "mt-4 text-sm leading-6 text-black/60 md:text-base", children: group.description }))] }), _jsxs("div", { className: "card max-w-sm bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(232,232,228,0.78))]", children: [_jsx("p", { className: "section-kicker", children: "Overview" }), _jsxs("div", { className: "mt-4 grid grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-3xl font-bold tracking-tight", children: sortedMembers.length }), _jsx("p", { className: "soft-label mt-1", children: "members" })] }), _jsxs("div", { children: [_jsx("p", { className: "text-3xl font-bold tracking-tight", children: pendingInvitations.length }), _jsx("p", { className: "soft-label mt-1", children: "pending" })] })] })] })] })] }) }), _jsx("main", { className: "container-app", children: _jsxs("div", { className: "grid gap-8 xl:grid-cols-[minmax(0,2fr)_360px]", children: [_jsxs("section", { className: "space-y-6", children: [_jsxs("div", { className: "card flex flex-col gap-4 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(236,236,232,0.72))] md:flex-row md:items-center md:justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "Library" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Content Library" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Keep charts, lyrics, recordings, and references in one place for everyone." })] }), _jsx("button", { onClick: () => setShowUploadModal(true), className: "btn-primary", children: "Upload Content" })] }), _jsx("div", { className: "card", children: contents.length === 0 ? (_jsxs("div", { className: "rounded-[24px] border border-dashed border-black/20 bg-white/60 px-6 py-16 text-center", children: [_jsx("p", { className: "text-xl font-semibold tracking-tight", children: "No content yet" }), _jsx("p", { className: "mt-2 text-sm text-black/60", children: "Upload something to start building your shared band library." })] })) : (_jsx(ContentList, { contents: contents, onDelete: handleDeleteContent, groupId: groupId })) })] }), _jsxs("aside", { className: "space-y-6", children: [_jsxs("section", { className: "card", children: [_jsxs("div", { className: "flex items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "People" }), _jsx("h2", { className: "mt-2 text-2xl font-bold tracking-tight", children: "Band Members" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Contact everyone in the band and keep roles visible." })] }), _jsx("span", { className: "stat-pill", children: sortedMembers.length })] }), _jsx("div", { className: "mt-5 space-y-3", children: sortedMembers.map((member) => {
                                                 const label = member.user.name || member.user.email;
                                                 const isCurrentUser = member.user.id === currentUser?.id;
                                                 const initials = label.charAt(0).toUpperCase();
-                                                return (_jsxs("div", { className: "flex items-start gap-3 rounded-xl border border-gray-200 px-4 py-3", children: [_jsx("div", { className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700", children: initials }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [_jsx("p", { className: "font-semibold text-gray-900", children: label }), isCurrentUser && (_jsx("span", { className: "rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700", children: "You" })), _jsx("span", { className: "rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-gray-600", children: member.role })] }), _jsx("p", { className: "truncate text-sm text-gray-500", children: member.user.email })] })] }, member.id));
-                                            }) })] }), _jsxs("section", { className: "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm", children: [_jsx("h2", { className: "text-xl font-bold", children: "Invite To Band" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-gray-500", children: "Send an invitation by email. They only become a band member after accepting it from their own MyBand account." }), _jsxs("form", { onSubmit: handleInviteMember, className: "mt-5 space-y-4", children: [_jsxs("div", { children: [_jsx("label", { htmlFor: "invite-email", className: "mb-2 block text-sm font-medium text-gray-700", children: "Member email" }), _jsx("input", { id: "invite-email", type: "email", value: inviteEmail, onChange: (event) => setInviteEmail(event.target.value), className: "input-field", placeholder: "bandmate@example.com", disabled: inviteLoading || !canInviteMembers })] }), !canInviteMembers && (_jsx("p", { className: "rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800", children: "Only band admins can invite members." })), inviteStatus && (_jsx("div", { className: `rounded-xl px-3 py-2 text-sm ${inviteStatus.tone === 'success'
-                                                        ? 'bg-emerald-50 text-emerald-800'
-                                                        : 'bg-red-50 text-red-700'}`, children: inviteStatus.text })), _jsx("button", { type: "submit", className: "btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60", disabled: inviteLoading || !canInviteMembers, children: inviteLoading ? 'Sending invitation...' : 'Send Invitation' })] })] }), _jsxs("section", { className: "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm", children: [_jsxs("div", { className: "flex items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("h2", { className: "text-xl font-bold", children: "Pending Invitations" }), _jsx("p", { className: "mt-1 text-sm text-gray-500", children: "These people will appear as members only after they accept." })] }), _jsx("span", { className: "rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700", children: pendingInvitations.length })] }), pendingInvitations.length === 0 ? (_jsx("p", { className: "mt-5 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500", children: "No pending invitations right now." })) : (_jsx("div", { className: "mt-5 space-y-3", children: pendingInvitations.map((invitation) => (_jsxs("div", { className: "rounded-xl border border-gray-200 px-4 py-3", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3", children: [_jsx("p", { className: "font-semibold text-gray-900", children: invitation.email }), _jsx("span", { className: "rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-amber-700", children: "Pending" })] }), _jsx("p", { className: "mt-2 text-sm text-gray-500", children: invitation.invitee
+                                                return (_jsxs("div", { className: "flex items-start gap-3 rounded-[24px] border border-black/10 bg-white/60 px-4 py-4", children: [_jsx("div", { className: "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/20 bg-black text-sm font-semibold text-white", children: initials }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [_jsx("p", { className: "font-semibold text-black", children: label }), isCurrentUser && (_jsx("span", { className: "rounded-full border border-black/20 bg-white px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70", children: "You" })), _jsx("span", { className: "rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60", children: member.role })] }), _jsx("p", { className: "truncate pt-1 text-sm text-black/50", children: member.user.email })] })] }, member.id));
+                                            }) })] }), _jsxs("section", { className: "card", children: [_jsx("p", { className: "section-kicker", children: "Invite" }), _jsx("h2", { className: "mt-2 text-2xl font-bold tracking-tight", children: "Invite To Band" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Send an invitation by email. They only become a band member after accepting it from their own MyBand account." }), _jsxs("form", { onSubmit: handleInviteMember, className: "mt-5 space-y-4", children: [_jsxs("div", { children: [_jsx("label", { htmlFor: "invite-email", className: "mb-2 block text-sm font-medium text-black/70", children: "Member email" }), _jsx("input", { id: "invite-email", type: "email", value: inviteEmail, onChange: (event) => setInviteEmail(event.target.value), className: "input-field", placeholder: "bandmate@example.com", disabled: inviteLoading || !canInviteMembers })] }), !canInviteMembers && (_jsx("p", { className: "status-banner status-banner-muted", children: "Only band admins can invite members." })), inviteStatus && (_jsx("div", { className: `status-banner ${inviteStatus.tone === 'success'
+                                                        ? 'status-banner-strong'
+                                                        : 'status-banner-muted'}`, children: inviteStatus.text })), _jsx("button", { type: "submit", className: "btn-primary w-full", disabled: inviteLoading || !canInviteMembers, children: inviteLoading ? 'Sending invitation...' : 'Send Invitation' })] })] }), _jsxs("section", { className: "card", children: [_jsxs("div", { className: "flex items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "Pending" }), _jsx("h2", { className: "mt-2 text-2xl font-bold tracking-tight", children: "Pending Invitations" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "These people will appear as members only after they accept." })] }), _jsx("span", { className: "stat-pill", children: pendingInvitations.length })] }), pendingInvitationStatus && (_jsx("div", { className: `mt-5 status-banner ${pendingInvitationStatus.tone === 'success'
+                                                ? 'status-banner-strong'
+                                                : 'status-banner-muted'}`, children: pendingInvitationStatus.text })), pendingInvitations.length === 0 ? (_jsx("p", { className: "mt-5 rounded-[24px] border border-dashed border-black/20 bg-white/60 px-4 py-6 text-sm text-black/60", children: "No pending invitations right now." })) : (_jsx("div", { className: "mt-5 space-y-3", children: pendingInvitations.map((invitation) => (_jsxs("div", { className: "rounded-[24px] border border-black/10 bg-white/60 px-4 py-4", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3", children: [_jsx("p", { className: "font-semibold text-black", children: invitation.email }), _jsx("span", { className: "rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60", children: "Pending" })] }), _jsx("p", { className: "mt-3 text-sm leading-6 text-black/60", children: invitation.invitee
                                                             ? `Waiting for ${invitation.invitee.name || invitation.invitee.email} to accept in their dashboard.`
-                                                            : 'No account found yet. They can sign up with this email and accept the invite afterward.' })] }, invitation.id))) }))] })] })] }) }), showUploadModal && (_jsx(UploadContentModal, { onClose: () => setShowUploadModal(false), onUpload: handleUpload }))] }));
+                                                            : 'No account found yet. They can sign up with this email and accept the invite afterward.' }), canInviteMembers && (_jsx("div", { className: "mt-4 flex justify-end", children: _jsx("button", { type: "button", onClick: () => void handleRemoveInvitation(invitation), className: "btn-danger", disabled: removingInvitationId === invitation.id, children: removingInvitationId === invitation.id ? 'Removing...' : 'Remove Request' }) }))] }, invitation.id))) }))] })] })] }) }), showUploadModal && (_jsx(UploadContentModal, { onClose: () => setShowUploadModal(false), onUpload: handleUpload }))] }));
 }
 //# sourceMappingURL=GroupPage.js.map

@@ -75,7 +75,7 @@ model GroupInvitation {
   groupId     String
   invitedById String
   inviteeId   String?
-  status      String   @default("pending") // "pending", "accepted"
+  status      String   @default("pending") // "pending", "accepted", "revoked"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   respondedAt DateTime?

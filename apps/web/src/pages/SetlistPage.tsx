@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd'
-import { setlistApi, contentApi } from '../lib/api'
+import { DragDropContext, Draggable, Droppable, DropResult } from 'react-beautiful-dnd'
+import { contentApi, setlistApi } from '../lib/api'
 import '../styles/setlist.css'
 
 interface SetlistItem {
@@ -362,56 +362,84 @@ export default function SetlistPage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return (
+      <div className="app-shell flex min-h-screen items-center justify-center px-4">
+        <div className="card max-w-sm text-center">
+          <p className="section-kicker">Loading</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight">Preparing your setlist viewer...</p>
+        </div>
+      </div>
+    )
   }
 
+  const addableContent = availableContent.filter(
+    (content) => !setlist?.items.some((item) => item.contentId === content.id)
+  )
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
+    <div className="app-shell">
+      <header className="app-header">
         <div className="container-app">
           <button
             onClick={() => navigate(-1)}
-            className="text-blue-600 hover:underline mb-4"
+            className="app-link mb-5 inline-flex items-center gap-2"
           >
-            ← Back
+            <span aria-hidden="true">←</span>
+            <span>Back</span>
           </button>
-          <h1 className="text-3xl font-bold">{setlist?.name}</h1>
+
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="section-kicker">Setlist Viewer</p>
+              <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
+                {setlist?.name}
+              </h1>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <span className="stat-pill">{setlist?.items.length || 0} songs</span>
+              <button
+                type="button"
+                onClick={enterPerformanceMode}
+                className="btn-secondary"
+                disabled={!activeItem}
+              >
+                Performance Mode
+              </button>
+              <button onClick={() => setShowAddModal(true)} className="btn-primary">
+                Add Song
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
       <main className="container-app">
-        <div className="flex justify-between items-center mb-8 gap-3 flex-wrap">
-          <h2 className="text-2xl font-bold">
-            Songs ({setlist?.items.length || 0})
-          </h2>
-          <div className="flex gap-3 flex-wrap">
-            <button
-              type="button"
-              onClick={enterPerformanceMode}
-              className="btn-secondary"
-              disabled={!activeItem}
-            >
-              Performance Mode
-            </button>
-            <button onClick={() => setShowAddModal(true)} className="btn-primary">
-              + Add Song
-            </button>
-          </div>
-        </div>
-
         {setlist && setlist.items.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">No songs in this setlist yet.</p>
+          <div className="card py-16 text-center">
+            <p className="text-2xl font-semibold tracking-tight">No songs in this setlist yet</p>
+            <p className="mt-3 text-sm leading-6 text-black/60">
+              Add songs from your shared library to start building the running order.
+            </p>
+            <div className="mt-6 flex justify-center">
+              <button onClick={() => setShowAddModal(true)} className="btn-primary">
+                Add Your First Song
+              </button>
+            </div>
           </div>
         ) : (
           <div className="setlist-layout">
-            <section className="card setlist-viewer">
+            <section className="card setlist-viewer bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(235,235,231,0.78))]">
               <div className="setlist-viewer-header">
                 <div>
                   <p className="setlist-viewer-label">Now Viewing</p>
-                  <h3 className="text-2xl font-bold">{activeItem?.content.title || 'Select a song'}</h3>
-                  <p className="text-sm text-gray-500">
-                    {activeIndex >= 0 ? `${activeIndex + 1} of ${setlist?.items.length}` : 'No active song'}
+                  <h3 className="text-2xl font-bold tracking-tight">
+                    {activeItem?.content.title || 'Select a song'}
+                  </h3>
+                  <p className="mt-2 text-sm text-black/60">
+                    {activeIndex >= 0
+                      ? `${activeIndex + 1} of ${setlist?.items.length}`
+                      : 'No active song'}
                   </p>
                 </div>
 
@@ -420,17 +448,17 @@ export default function SetlistPage() {
                     type="button"
                     onClick={handlePrevious}
                     disabled={!canGoPrevious}
-                    className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-secondary"
                   >
-                    ← Previous
+                    Previous
                   </button>
                   <button
                     type="button"
                     onClick={handleNext}
                     disabled={!canGoNext}
-                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary"
                   >
-                    Next →
+                    Next
                   </button>
                 </div>
               </div>
@@ -445,21 +473,32 @@ export default function SetlistPage() {
 
               {activeItem && (
                 <div className="setlist-viewer-footer">
-                  <p className="text-sm text-gray-500">
-                    Swipe on touch screens, use the buttons here, or open Performance Mode for fullscreen navigation.
+                  <p className="text-sm text-black/60">
+                    Swipe on touch screens, use the buttons here, or open Performance Mode for
+                    fullscreen navigation.
                   </p>
                 </div>
               )}
             </section>
 
-            <section>
+            <section className="card bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(235,235,231,0.78))]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="section-kicker">Order</p>
+                  <h2 className="mt-3 text-2xl font-bold tracking-tight">Running Order</h2>
+                </div>
+                <span className="stat-pill">{setlist?.items.length || 0}</span>
+              </div>
+
               <DragDropContext onDragEnd={handleDragEnd}>
                 <Droppable droppableId="setlist">
                   {(provided, snapshot) => (
                     <div
                       {...provided.droppableProps}
                       ref={provided.innerRef}
-                      className={`space-y-3 ${snapshot.isDraggingOver ? 'bg-blue-50 p-4 rounded' : ''}`}
+                      className={`mt-5 space-y-3 rounded-[28px] transition ${
+                        snapshot.isDraggingOver ? 'bg-black/[0.04] p-3' : ''
+                      }`}
                     >
                       {setlist?.items.map((item, index) => {
                         const isActive = item.id === activeItemId
@@ -471,15 +510,24 @@ export default function SetlistPage() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`card cursor-move transition ${
-                                  snapshot.isDragging ? 'shadow-lg bg-blue-50' : ''
-                                } ${isActive ? 'ring-2 ring-blue-500' : ''}`}
+                                className={`setlist-item-card ${
+                                  snapshot.isDragging ? 'setlist-item-card-dragging' : ''
+                                } ${isActive ? 'setlist-item-card-active' : ''}`}
                                 onClick={() => setActiveItemId(item.id)}
                               >
-                                <div className="flex items-center justify-between gap-4">
-                                  <div>
-                                    <p className="font-bold">{index + 1}. {item.content.title}</p>
-                                    <p className="text-sm text-gray-500">{item.content.contentType}</p>
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <span className="rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                                        {String(index + 1).padStart(2, '0')}
+                                      </span>
+                                      <span className="rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                                        {item.content.contentType}
+                                      </span>
+                                    </div>
+                                    <p className="mt-4 text-lg font-bold tracking-tight text-black">
+                                      {item.content.title}
+                                    </p>
                                   </div>
                                   <button
                                     type="button"
@@ -487,7 +535,7 @@ export default function SetlistPage() {
                                       e.stopPropagation()
                                       void handleRemoveItem(item.id)
                                     }}
-                                    className="btn-danger text-sm"
+                                    className="btn-danger"
                                   >
                                     Remove
                                   </button>
@@ -534,38 +582,51 @@ export default function SetlistPage() {
           </div>
 
           <div className="performance-mode-hint">
-            Swipe between songs on iPad. Use keyboard left/right arrows on laptop.
+            Swipe between songs on iPad. Use keyboard left and right arrows on laptop.
           </div>
         </div>
       )}
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="card w-full max-w-2xl max-h-96 overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Add Content</h2>
-            <div className="space-y-2">
-              {availableContent
-                .filter((content) => !setlist?.items.some((item) => item.contentId === content.id))
-                .map((content) => (
-                  <div key={content.id} className="p-3 border rounded hover:bg-gray-50">
-                    <div className="flex justify-between items-center">
+        <div className="modal-overlay">
+          <div className="card modal-card max-h-[32rem] max-w-2xl overflow-y-auto">
+            <p className="section-kicker">Add Content</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight">Add songs to this setlist</h2>
+
+            {addableContent.length === 0 ? (
+              <div className="mt-6 rounded-[24px] border border-dashed border-black/20 bg-white/60 px-5 py-10 text-center">
+                <p className="text-xl font-semibold tracking-tight">Everything is already in the setlist</p>
+                <p className="mt-2 text-sm leading-6 text-black/60">
+                  Add more content to the band library if you need more songs here.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 space-y-3">
+                {addableContent.map((content) => (
+                  <div
+                    key={content.id}
+                    className="rounded-[24px] border border-black/10 bg-white/60 p-4"
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div>
-                        <p className="font-bold">{content.title}</p>
-                        <p className="text-sm text-gray-500">{content.contentType}</p>
+                        <p className="text-lg font-semibold tracking-tight">{content.title}</p>
+                        <p className="mt-1 text-sm text-black/60">{content.contentType}</p>
                       </div>
                       <button
-                        onClick={() => handleAddContent(content.id)}
-                        className="btn-primary text-sm"
+                        onClick={() => void handleAddContent(content.id)}
+                        className="btn-primary"
                       >
                         Add
                       </button>
                     </div>
                   </div>
                 ))}
-            </div>
+              </div>
+            )}
+
             <button
               onClick={() => setShowAddModal(false)}
-              className="mt-4 btn-secondary w-full"
+              className="btn-secondary mt-6 w-full"
             >
               Close
             </button>

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createGroup, getUserGroups, getGroup, inviteMemberToGroup, acceptGroupInvitation, } from '../controllers/groupController';
+import { createGroup, getUserGroups, getGroup, inviteMemberToGroup, revokeGroupInvitation, acceptGroupInvitation, } from '../controllers/groupController';
 import { asyncHandler } from '../utils/errors';
 import { authMiddleware } from '../middleware/auth';
 const router = Router();
@@ -27,6 +27,11 @@ router.get('/:groupId', asyncHandler(getGroup));
  * @body { email }
  */
 router.post('/:groupId/invitations', asyncHandler(inviteMemberToGroup));
+/**
+ * @route DELETE /api/groups/:groupId/invitations/:invitationId
+ * @desc Revoke a pending invitation so it can no longer be accepted
+ */
+router.delete('/:groupId/invitations/:invitationId', asyncHandler(revokeGroupInvitation));
 /**
  * @route POST /api/groups/:groupId/invitations/:invitationId/accept
  * @desc Accept a pending invitation and join the group

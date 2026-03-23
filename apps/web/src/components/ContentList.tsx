@@ -18,52 +18,60 @@ interface Props {
 }
 
 export default function ContentList({ contents, onDelete, groupId }: Props) {
-  const getIcon = (contentType: string) => {
+  const getTypeLabel = (contentType: string) => {
     switch (contentType) {
       case 'lyrics':
-        return '📝'
+        return 'Lyrics'
       case 'chords':
-        return '🎵'
+        return 'Chords'
       case 'pdf':
-        return '📄'
+        return 'PDF'
       case 'image':
-        return '🖼️'
+        return 'Image'
       default:
-        return '📦'
+        return 'File'
     }
   }
 
   return (
     <div className="space-y-4">
-      {contents.map((content) => (
-        <div key={content.id} className="card">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">{getIcon(content.contentType)}</span>
-                <div>
-                  <h3 className="font-bold text-lg">{content.title}</h3>
-                  <p className="text-sm text-gray-500 capitalize">{content.contentType}</p>
-                </div>
+      {contents.map((content, index) => (
+        <div
+          key={content.id}
+          className="rounded-[26px] border border-black/10 bg-[rgba(255,255,255,0.6)] p-5"
+        >
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                  {getTypeLabel(content.contentType)}
+                </span>
               </div>
+
+              <h3 className="mt-4 text-2xl font-bold tracking-tight text-black">{content.title}</h3>
               {content.description && (
-                <p className="text-gray-600 mb-2">{content.description}</p>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-black/60">
+                  {content.description}
+                </p>
               )}
-              <p className="text-xs text-gray-400">
-                by {content.createdBy.name || content.createdBy.email}
+              <p className="mt-4 text-xs uppercase tracking-[0.18em] text-black/40">
+                Added by {content.createdBy.name || content.createdBy.email}
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-3">
               <Link
                 to={`/groups/${groupId}/setlists`}
-                className="btn-secondary text-sm inline-block"
+                className="btn-secondary text-center"
               >
                 View Setlists
               </Link>
               <button
-                onClick={() => onDelete(content.id)}
-                className="btn-danger text-sm"
+                onClick={() => void onDelete(content.id)}
+                className="btn-danger"
               >
                 Delete
               </button>

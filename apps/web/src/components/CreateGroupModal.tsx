@@ -32,47 +32,51 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="card w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6">Create New Band</h2>
+    <div className="modal-overlay">
+      <div className="card modal-card max-w-md">
+        <p className="section-kicker">Create</p>
+        <h2 className="mt-3 text-3xl font-bold tracking-tight">Create New Band</h2>
+        <p className="mt-2 text-sm leading-6 text-black/60">
+          Start a fresh workspace for members, shared content, and setlists.
+        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Band Name *</label>
+            <label className="mb-2 block text-sm font-medium text-black/70">Band Name</label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
               className="input-field"
-              placeholder="e.g., The Beatles"
+              placeholder="e.g., Midnight Echo"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Description</label>
+            <label className="mb-2 block text-sm font-medium text-black/70">Description</label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              className="input-field resize-none h-24"
-              placeholder="Optional band description..."
+              className="input-field h-28 resize-none"
+              placeholder="What makes this project special?"
             />
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 btn-secondary"
+              className="btn-secondary flex-1"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 btn-primary disabled:opacity-50"
+              className="btn-primary flex-1"
               disabled={loading}
             >
               {loading ? 'Creating...' : 'Create'}

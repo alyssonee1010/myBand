@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { authApi, groupApi, contentApi } from '../lib/api'
+import { authApi, contentApi, groupApi } from '../lib/api'
 import ContentList from '../components/ContentList'
 import UploadContentModal from '../components/UploadContentModal'
 import '../styles/group.css'
@@ -62,6 +62,8 @@ export default function GroupPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteStatus, setInviteStatus] = useState<StatusMessage | null>(null)
+  const [pendingInvitationStatus, setPendingInvitationStatus] = useState<StatusMessage | null>(null)
+  const [removingInvitationId, setRemovingInvitationId] = useState<string | null>(null)
 
   useEffect(() => {
     if (groupId) {
@@ -128,6 +130,7 @@ export default function GroupPage() {
 
     setInviteLoading(true)
     setInviteStatus(null)
+    setPendingInvitationStatus(null)
 
     try {
       const invitation = await groupApi.inviteMember(groupId!, normalizedEmail)
@@ -172,10 +175,63 @@ export default function GroupPage() {
     }
   }
 
+  const handleRemoveInvitation = async (invitation: GroupInvitation) => {
+    if (!groupId) {
+      return
+    }
+
+    const shouldRemove = confirm(`Remove the pending request for ${invitation.email}?`)
+    if (!shouldRemove) {
+      return
+    }
+
+    setRemovingInvitationId(invitation.id)
+    setPendingInvitationStatus(null)
+
+    try {
+      await groupApi.removeInvitation(groupId, invitation.id)
+      setGroup((currentGroup) => {
+        if (!currentGroup) {
+          return currentGroup
+        }
+
+        return {
+          ...currentGroup,
+          invitations: currentGroup.invitations.filter(
+            (currentInvitation) => currentInvitation.id !== invitation.id
+          ),
+        }
+      })
+      setPendingInvitationStatus({
+        tone: 'success',
+        text: `${invitation.email} has been removed from pending requests.`,
+      })
+    } catch (error) {
+      const apiError = error as Error & { status?: number }
+      let message = apiError.message || 'Failed to remove this pending request.'
+
+      if (apiError.status === 403) {
+        message = 'Only band admins can remove pending requests.'
+      } else if (apiError.status === 400) {
+        message = 'This request is no longer pending.'
+      }
+
+      setPendingInvitationStatus({
+        tone: 'error',
+        text: message,
+      })
+    } finally {
+      setRemovingInvitationId(null)
+    }
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl">Loading...</p>
+      <div className="app-shell flex min-h-screen items-center justify-center px-4">
+        <div className="card max-w-sm text-center">
+          <p className="section-kicker">Loading</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight">Setting up your band workspace...</p>
+        </div>
       </div>
     )
   }
@@ -194,40 +250,71 @@ export default function GroupPage() {
   const pendingInvitations = group?.invitations || []
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
+    <div className="app-shell">
+      <header className="app-header">
         <div className="container-app">
           <button
             onClick={() => navigate('/dashboard')}
-            className="text-blue-600 hover:underline mb-4"
+            className="app-link mb-5 inline-flex items-center gap-2"
           >
-            ← Back to Bands
+            <span aria-hidden="true">←</span>
+            <span>Back to Bands</span>
           </button>
-          <h1 className="text-3xl font-bold">{group?.name}</h1>
-          {group?.description && <p className="text-gray-600">{group.description}</p>}
+
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="section-kicker">Band Workspace</p>
+              <h1 className="mt-3 text-4xl font-bold tracking-tight text-black md:text-5xl">
+                {group?.name}
+              </h1>
+              {group?.description && (
+                <p className="mt-4 text-sm leading-6 text-black/60 md:text-base">
+                  {group.description}
+                </p>
+              )}
+            </div>
+
+            <div className="card max-w-sm bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(232,232,228,0.78))]">
+              <p className="section-kicker">Overview</p>
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-3xl font-bold tracking-tight">{sortedMembers.length}</p>
+                  <p className="soft-label mt-1">members</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold tracking-tight">{pendingInvitations.length}</p>
+                  <p className="soft-label mt-1">pending</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
       <main className="container-app">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_360px]">
           <section className="space-y-6">
-            <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+            <div className="card flex flex-col gap-4 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(236,236,232,0.72))] md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-2xl font-bold">Content Library</h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="section-kicker">Library</p>
+                <h2 className="mt-3 text-3xl font-bold tracking-tight">Content Library</h2>
+                <p className="mt-2 text-sm leading-6 text-black/60">
                   Keep charts, lyrics, recordings, and references in one place for everyone.
                 </p>
               </div>
 
               <button onClick={() => setShowUploadModal(true)} className="btn-primary">
-                + Upload Content
+                Upload Content
               </button>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="card">
               {contents.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-500 mb-4">No content yet. Upload something to get started!</p>
+                <div className="rounded-[24px] border border-dashed border-black/20 bg-white/60 px-6 py-16 text-center">
+                  <p className="text-xl font-semibold tracking-tight">No content yet</p>
+                  <p className="mt-2 text-sm text-black/60">
+                    Upload something to start building your shared band library.
+                  </p>
                 </div>
               ) : (
                 <ContentList
@@ -240,17 +327,16 @@ export default function GroupPage() {
           </section>
 
           <aside className="space-y-6">
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <section className="card">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold">Band Members</h2>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="section-kicker">People</p>
+                  <h2 className="mt-2 text-2xl font-bold tracking-tight">Band Members</h2>
+                  <p className="mt-2 text-sm leading-6 text-black/60">
                     Contact everyone in the band and keep roles visible.
                   </p>
                 </div>
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-                  {sortedMembers.length}
-                </span>
+                <span className="stat-pill">{sortedMembers.length}</span>
               </div>
 
               <div className="mt-5 space-y-3">
@@ -262,25 +348,25 @@ export default function GroupPage() {
                   return (
                     <div
                       key={member.id}
-                      className="flex items-start gap-3 rounded-xl border border-gray-200 px-4 py-3"
+                      className="flex items-start gap-3 rounded-[24px] border border-black/10 bg-white/60 px-4 py-4"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/20 bg-black text-sm font-semibold text-white">
                         {initials}
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-semibold text-gray-900">{label}</p>
+                          <p className="font-semibold text-black">{label}</p>
                           {isCurrentUser && (
-                            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                            <span className="rounded-full border border-black/20 bg-white px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
                               You
                             </span>
                           )}
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-gray-600">
+                          <span className="rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
                             {member.role}
                           </span>
                         </div>
-                        <p className="truncate text-sm text-gray-500">{member.user.email}</p>
+                        <p className="truncate pt-1 text-sm text-black/50">{member.user.email}</p>
                       </div>
                     </div>
                   )
@@ -288,16 +374,17 @@ export default function GroupPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold">Invite To Band</h2>
-              <p className="mt-2 text-sm leading-6 text-gray-500">
+            <section className="card">
+              <p className="section-kicker">Invite</p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight">Invite To Band</h2>
+              <p className="mt-2 text-sm leading-6 text-black/60">
                 Send an invitation by email. They only become a band member after accepting it
                 from their own MyBand account.
               </p>
 
               <form onSubmit={handleInviteMember} className="mt-5 space-y-4">
                 <div>
-                  <label htmlFor="invite-email" className="mb-2 block text-sm font-medium text-gray-700">
+                  <label htmlFor="invite-email" className="mb-2 block text-sm font-medium text-black/70">
                     Member email
                   </label>
                   <input
@@ -312,17 +399,17 @@ export default function GroupPage() {
                 </div>
 
                 {!canInviteMembers && (
-                  <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  <p className="status-banner status-banner-muted">
                     Only band admins can invite members.
                   </p>
                 )}
 
                 {inviteStatus && (
                   <div
-                    className={`rounded-xl px-3 py-2 text-sm ${
+                    className={`status-banner ${
                       inviteStatus.tone === 'success'
-                        ? 'bg-emerald-50 text-emerald-800'
-                        : 'bg-red-50 text-red-700'
+                        ? 'status-banner-strong'
+                        : 'status-banner-muted'
                     }`}
                   >
                     {inviteStatus.text}
@@ -331,7 +418,7 @@ export default function GroupPage() {
 
                 <button
                   type="submit"
-                  className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+                  className="btn-primary w-full"
                   disabled={inviteLoading || !canInviteMembers}
                 >
                   {inviteLoading ? 'Sending invitation...' : 'Send Invitation'}
@@ -339,21 +426,32 @@ export default function GroupPage() {
               </form>
             </section>
 
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <section className="card">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold">Pending Invitations</h2>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="section-kicker">Pending</p>
+                  <h2 className="mt-2 text-2xl font-bold tracking-tight">Pending Invitations</h2>
+                  <p className="mt-2 text-sm leading-6 text-black/60">
                     These people will appear as members only after they accept.
                   </p>
                 </div>
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-                  {pendingInvitations.length}
-                </span>
+                <span className="stat-pill">{pendingInvitations.length}</span>
               </div>
 
+              {pendingInvitationStatus && (
+                <div
+                  className={`mt-5 status-banner ${
+                    pendingInvitationStatus.tone === 'success'
+                      ? 'status-banner-strong'
+                      : 'status-banner-muted'
+                  }`}
+                >
+                  {pendingInvitationStatus.text}
+                </div>
+              )}
+
               {pendingInvitations.length === 0 ? (
-                <p className="mt-5 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                <p className="mt-5 rounded-[24px] border border-dashed border-black/20 bg-white/60 px-4 py-6 text-sm text-black/60">
                   No pending invitations right now.
                 </p>
               ) : (
@@ -361,20 +459,33 @@ export default function GroupPage() {
                   {pendingInvitations.map((invitation) => (
                     <div
                       key={invitation.id}
-                      className="rounded-xl border border-gray-200 px-4 py-3"
+                      className="rounded-[24px] border border-black/10 bg-white/60 px-4 py-4"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="font-semibold text-gray-900">{invitation.email}</p>
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-amber-700">
+                        <p className="font-semibold text-black">{invitation.email}</p>
+                        <span className="rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
                           Pending
                         </span>
                       </div>
 
-                      <p className="mt-2 text-sm text-gray-500">
+                      <p className="mt-3 text-sm leading-6 text-black/60">
                         {invitation.invitee
                           ? `Waiting for ${invitation.invitee.name || invitation.invitee.email} to accept in their dashboard.`
                           : 'No account found yet. They can sign up with this email and accept the invite afterward.'}
                       </p>
+
+                      {canInviteMembers && (
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => void handleRemoveInvitation(invitation)}
+                            className="btn-danger"
+                            disabled={removingInvitationId === invitation.id}
+                          >
+                            {removingInvitationId === invitation.id ? 'Removing...' : 'Remove Request'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

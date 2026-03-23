@@ -189,6 +189,59 @@ export const inviteMemberToGroup = asyncHandler(async (req, res) => {
     res.status(existingInvitation ? 200 : 201).json(invitation);
 });
 /**
+ * Revoke a pending invitation so it no longer appears or can be accepted
+ */
+export const revokeGroupInvitation = asyncHandler(async (req, res) => {
+    const userId = req.userId;
+    const { groupId, invitationId } = req.params;
+    if (!userId) {
+        throw new ApiError(401, 'Unauthorized');
+    }
+    const adminMembership = await prisma.groupMember.findUnique({
+        where: { userId_groupId: { userId, groupId } },
+    });
+    if (!adminMembership || adminMembership.role !== 'admin') {
+        throw new ApiError(403, 'Only admins can remove pending invitations');
+    }
+    const invitation = await prisma.groupInvitation.findUnique({
+        where: { id: invitationId },
+        include: {
+            group: true,
+            invitedBy: {
+                select: userSelection,
+            },
+            invitee: {
+                select: userSelection,
+            },
+        },
+    });
+    if (!invitation || invitation.groupId !== groupId) {
+        throw new ApiError(404, 'Invitation not found');
+    }
+    if (invitation.status !== 'pending') {
+        throw new ApiError(400, 'Invitation is no longer pending');
+    }
+    const revokedInvitation = await prisma.groupInvitation.update({
+        where: { id: invitationId },
+        data: {
+            status: 'revoked',
+            respondedAt: new Date(),
+        },
+        include: {
+            group: true,
+            invitedBy: {
+                select: userSelection,
+            },
+            invitee: {
+                select: userSelection,
+            },
+        },
+    });
+    res.json({
+        invitation: revokedInvitation,
+    });
+});
+/**
  * Accept a pending invitation and join the group
  */
 export const acceptGroupInvitation = asyncHandler(async (req, res) => {
