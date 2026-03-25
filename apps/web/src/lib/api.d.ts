@@ -3,7 +3,10 @@ declare const apiClient: import("axios").AxiosInstance;
 export declare const authApi: {
     register: (email: string, password: string, name?: string) => Promise<any>;
     login: (email: string, password: string) => Promise<any>;
+    verifyEmail: (token: string) => Promise<any>;
+    resendVerificationEmail: (email: string) => Promise<any>;
     getProfile: () => Promise<any>;
+    deleteAccount: (password: string) => Promise<any>;
 };
 export declare const groupApi: {
     createGroup: (name: string, description?: string) => Promise<any>;

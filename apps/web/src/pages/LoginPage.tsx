@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
+  const [unverifiedEmail, setUnverifiedEmail] = useState('')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -21,6 +22,7 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    setUnverifiedEmail('')
     setLoading(true)
 
     if (!formData.email.trim() || !formData.password.trim()) {
@@ -42,6 +44,9 @@ export default function LoginPage() {
       }, 500)
     } catch (err: any) {
       const errorMsg = err?.message || err?.toString() || 'Login failed'
+      if (err?.status === 403 && err?.response?.code === 'EMAIL_NOT_VERIFIED') {
+        setUnverifiedEmail(formData.email.trim())
+      }
       setError(errorMsg)
     } finally {
       setLoading(false)
@@ -68,6 +73,18 @@ export default function LoginPage() {
           {error && (
             <div className="mt-5 status-banner status-banner-muted">
               {error}
+            </div>
+          )}
+
+          {unverifiedEmail && (
+            <div className="mt-4 text-sm text-black/60">
+              Need a new verification link?{' '}
+              <Link
+                to={`/auth/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+                className="font-semibold text-black underline-offset-4 hover:underline"
+              >
+                Verify your email
+              </Link>
             </div>
           )}
 

@@ -10,6 +10,7 @@ interface User {
   id: string
   email: string
   name?: string
+  emailVerifiedAt?: string | null
 }
 
 interface Group {
@@ -34,6 +35,9 @@ export default function DashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [acceptingInvitationId, setAcceptingInvitationId] = useState<string | null>(null)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteStatus, setDeleteStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     void loadData()
@@ -72,6 +76,47 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await clearToken()
     navigate('/')
+  }
+
+  const handleDeleteAccount = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!deletePassword) {
+      setDeleteStatus({
+        tone: 'error',
+        text: 'Enter your password to delete your account.',
+      })
+      return
+    }
+
+    const confirmed = confirm(
+      'Delete your account permanently? This removes your memberships, your uploads, and any bands that only you belong to.'
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setDeleteLoading(true)
+    setDeleteStatus(null)
+
+    try {
+      const response = await authApi.deleteAccount(deletePassword)
+      await clearToken()
+      setDeleteStatus({
+        tone: 'success',
+        text: response.message || 'Your account has been deleted.',
+      })
+      navigate('/')
+    } catch (error) {
+      const apiError = error as Error & { status?: number }
+      setDeleteStatus({
+        tone: 'error',
+        text: apiError.message || 'Failed to delete your account.',
+      })
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const handleAcceptInvitation = async (invitation: PendingInvitation) => {
@@ -199,6 +244,54 @@ export default function DashboardPage() {
         ) : (
           <GroupList groups={groups} />
         )}
+
+        <section className="card">
+          <p className="section-kicker">Account</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight">Your account</h2>
+          <p className="mt-3 text-sm leading-6 text-black/60">
+            Signed in as {user?.email}. Email status:{' '}
+            {user?.emailVerifiedAt ? 'verified' : 'not verified'}.
+          </p>
+
+          <div className="mt-8 rounded-[24px] border border-red-200 bg-red-50/80 p-5">
+            <p className="text-lg font-semibold tracking-tight text-red-900">Delete account</p>
+            <p className="mt-2 text-sm leading-6 text-red-900/70">
+              This permanently deletes your account, your uploaded content, and any bands that only
+              you belong to. If you are the only admin in a shared band, another member will be
+              promoted automatically.
+            </p>
+
+            {deleteStatus && (
+              <div
+                className={`mt-5 status-banner ${
+                  deleteStatus.tone === 'success' ? 'status-banner-strong' : 'status-banner-muted'
+                }`}
+              >
+                {deleteStatus.text}
+              </div>
+            )}
+
+            <form onSubmit={handleDeleteAccount} className="mt-5 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-red-900/80">
+                  Confirm password
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
+                  className="input-field"
+                  placeholder="Enter your password"
+                  disabled={deleteLoading}
+                />
+              </div>
+
+              <button type="submit" className="btn-danger" disabled={deleteLoading}>
+                {deleteLoading ? 'Deleting account...' : 'Delete Account'}
+              </button>
+            </form>
+          </div>
+        </section>
       </main>
 
       {showCreateModal && (

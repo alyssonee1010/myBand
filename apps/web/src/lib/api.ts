@@ -98,8 +98,28 @@ export const authApi = {
     return data
   },
 
+  verifyEmail: async (token: string) => {
+    const { data } = await apiClient.post('/auth/verify-email', { token })
+    if (data.token) {
+      await setToken(data.token)
+    }
+    return data
+  },
+
+  resendVerificationEmail: async (email: string) => {
+    const { data } = await apiClient.post('/auth/resend-verification', { email })
+    return data
+  },
+
   getProfile: async () => {
     const { data } = await apiClient.get('/auth/me')
+    return data
+  },
+
+  deleteAccount: async (password: string) => {
+    const { data } = await apiClient.delete('/auth/account', {
+      data: { password },
+    })
     return data
   },
 }

@@ -38,14 +38,14 @@ export default function RegisterPage() {
     try {
       const response = await authApi.register(formData.email, formData.password, formData.name)
 
-      if (!response.token) {
-        throw new Error('No token received from server')
-      }
-
-      setSuccess('Account created. Redirecting to your dashboard...')
+      setSuccess(response.message || 'Account created. Check your inbox to verify your email.')
       setTimeout(() => {
-        navigate('/dashboard')
-      }, 500)
+        navigate(`/auth/verify-email?email=${encodeURIComponent(formData.email.trim())}`, {
+          state: {
+            verificationPreviewUrl: response.verificationPreviewUrl,
+          },
+        })
+      }, 800)
     } catch (err: any) {
       const errorMsg = err?.message || err?.toString() || 'Registration failed'
       setError(errorMsg)

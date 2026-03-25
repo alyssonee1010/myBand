@@ -2,6 +2,7 @@ import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 import DashboardPage from './pages/DashboardPage'
 import GroupPage from './pages/GroupPage'
 import SetlistsPage from './pages/SetlistsPage'
@@ -17,6 +18,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/groups/:groupId" element={<GroupPage />} />
         <Route path="/groups/:groupId/setlists" element={<SetlistsPage />} />

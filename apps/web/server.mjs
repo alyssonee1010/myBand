@@ -10,6 +10,17 @@ const server = http.createServer((request, response) => {
     return
   }
 
+  if (request.url?.startsWith('/api/')) {
+    response.writeHead(502, { 'Content-Type': 'application/json' })
+    response.end(
+      JSON.stringify({
+        error:
+          'Web service received an API request. Set VITE_API_BASE_URL to your Railway API domain and redeploy the web service.',
+      })
+    )
+    return
+  }
+
   void handler(request, response, {
     public: 'dist',
     cleanUrls: false,

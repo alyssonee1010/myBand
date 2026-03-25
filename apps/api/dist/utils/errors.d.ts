@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 export declare class ApiError extends Error {
     statusCode: number;
-    constructor(statusCode: number, message: string);
+    code?: string | undefined;
+    constructor(statusCode: number, message: string, code?: string | undefined);
 }
 /**
  * Global error handler middleware

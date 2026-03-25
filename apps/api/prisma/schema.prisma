@@ -19,6 +19,9 @@ model User {
   email     String   @unique
   password  String   // Stored hashed with bcryptjs
   name      String?
+  emailVerifiedAt DateTime?
+  emailVerificationToken String? @unique
+  emailVerificationExpiresAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
