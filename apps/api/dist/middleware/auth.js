@@ -1,5 +1,5 @@
-import { extractToken, verifyToken } from '../utils/jwt';
-import { ApiError } from '../utils/errors';
+import { extractToken, verifyToken } from '../utils/jwt.js';
+import { ApiError } from '../utils/errors.js';
 /**
  * Middleware to verify JWT token and attach userId to request
  */

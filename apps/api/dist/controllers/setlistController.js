@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { ApiError, asyncHandler } from '../utils/errors';
+import { ApiError, asyncHandler } from '../utils/errors.js';
 const prisma = new PrismaClient();
 /**
  * Create a new setlist

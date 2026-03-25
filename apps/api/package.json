@@ -7,13 +7,19 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "npm run prisma:generate && tsc",
     "start": "node dist/index.js",
+    "postinstall": "npm run prisma:generate",
+    "prisma:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "lint": "eslint src --ext .ts,.tsx"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "@prisma/client": "^5.8.0",

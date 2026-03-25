@@ -6,8 +6,8 @@ import {
   addItemToSetlist,
   reorderSetlistItems,
   removeItemFromSetlist,
-} from '../controllers/setlistController';
-import { authMiddleware } from '../middleware/auth';
+} from '../controllers/setlistController.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router({ mergeParams: true }); // Allow inherited params like groupId
 

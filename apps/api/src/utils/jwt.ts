@@ -1,6 +1,16 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = (process.env.JWT_SECRET || 'your-secret-key') as string;
+function getJwtSecret(): jwt.Secret {
+  const secret = process.env.JWT_SECRET?.trim();
+
+  if (!secret) {
+    throw new Error('JWT_SECRET is required. Set it in apps/api/.env or Railway service variables.');
+  }
+
+  return secret;
+}
+
+const JWT_SECRET = getJwtSecret();
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
 
 /**
@@ -15,8 +25,18 @@ export function generateToken(userId: string): string {
  */
 export function verifyToken(token: string): { userId: string } | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    return decoded;
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (typeof decoded !== 'object' || decoded === null || !('userId' in decoded)) {
+      return null;
+    }
+
+    const userId = decoded.userId;
+    if (typeof userId !== 'string') {
+      return null;
+    }
+
+    return { userId };
   } catch (error) {
     return null;
   }

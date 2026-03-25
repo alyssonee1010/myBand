@@ -6,9 +6,9 @@ import {
   inviteMemberToGroup,
   revokeGroupInvitation,
   acceptGroupInvitation,
-} from '../controllers/groupController';
-import { asyncHandler } from '../utils/errors';
-import { authMiddleware } from '../middleware/auth';
+} from '../controllers/groupController.js';
+import { asyncHandler } from '../utils/errors.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 

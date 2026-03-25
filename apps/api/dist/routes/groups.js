@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { createGroup, getUserGroups, getGroup, inviteMemberToGroup, revokeGroupInvitation, acceptGroupInvitation, } from '../controllers/groupController';
-import { asyncHandler } from '../utils/errors';
-import { authMiddleware } from '../middleware/auth';
+import { createGroup, getUserGroups, getGroup, inviteMemberToGroup, revokeGroupInvitation, acceptGroupInvitation, } from '../controllers/groupController.js';
+import { asyncHandler } from '../utils/errors.js';
+import { authMiddleware } from '../middleware/auth.js';
 const router = Router();
 // Apply auth middleware to all routes
 router.use(authMiddleware);

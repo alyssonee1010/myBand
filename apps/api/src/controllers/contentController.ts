@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { ApiError, asyncHandler } from '../utils/errors';
+import { ApiError, asyncHandler } from '../utils/errors.js';
 import path from 'path';
 import fs from 'fs';
+import { ensureUploadDirExists } from '../utils/uploads.js';
 
 const prisma = new PrismaClient();
-const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+const UPLOAD_DIR = ensureUploadDirExists();
 
 const getMimeType = (contentType: string, fileName?: string | null) => {
   const ext = path.extname(fileName || '').toLowerCase();

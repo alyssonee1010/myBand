@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { extractToken, verifyToken } from '../utils/jwt';
-import { ApiError } from '../utils/errors';
+import { extractToken, verifyToken } from '../utils/jwt.js';
+import { ApiError } from '../utils/errors.js';
 
 // Extend Express Request to include userId
 declare global {

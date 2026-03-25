@@ -1,16 +1,20 @@
 import 'dotenv/config';
 import express from 'express';
-import { authMiddleware, corsMiddleware } from './middleware/auth';
-import { errorHandler } from './utils/errors';
+import { authMiddleware, corsMiddleware } from './middleware/auth.js';
+import { errorHandler } from './utils/errors.js';
+import { ensureUploadDirExists, uploadDir } from './utils/uploads.js';
 
 // Routes
-import authRoutes from './routes/auth';
-import groupRoutes from './routes/groups';
-import contentRoutes from './routes/content';
-import setlistRoutes from './routes/setlists';
+import authRoutes from './routes/auth.js';
+import groupRoutes from './routes/groups.js';
+import contentRoutes from './routes/content.js';
+import setlistRoutes from './routes/setlists.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const shouldExposeUploadsPublicly = process.env.EXPOSE_UPLOADS_PUBLICLY === 'true';
+
+ensureUploadDirExists();
 
 // ============================================================================
 // Middleware
@@ -23,8 +27,11 @@ app.use(corsMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static files for uploads
-app.use('/uploads', express.static(process.env.UPLOAD_DIR || './uploads'));
+// Optional static hosting for uploads. Keep disabled by default so file access goes
+// through the authenticated file route instead of exposing uploaded files publicly.
+if (shouldExposeUploadsPublicly) {
+  app.use('/uploads', express.static(uploadDir));
+}
 
 // ============================================================================
 // Routes
@@ -56,4 +63,5 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`🎸 MyBand API running on http://localhost:${PORT}`);
   console.log(`📚 API docs: See routes/* for endpoints`);
+  console.log(`📁 Upload directory: ${uploadDir}`);
 });

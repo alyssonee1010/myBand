@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { ApiError, asyncHandler } from '../utils/errors';
-import { normalizeEmail } from '../utils/email';
+import { ApiError, asyncHandler } from '../utils/errors.js';
+import { normalizeEmail } from '../utils/email.js';
 const prisma = new PrismaClient();
 const userSelection = {
     id: true,

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { createSetlist, getGroupSetlists, getSetlist, addItemToSetlist, reorderSetlistItems, removeItemFromSetlist, } from '../controllers/setlistController';
-import { authMiddleware } from '../middleware/auth';
+import { createSetlist, getGroupSetlists, getSetlist, addItemToSetlist, reorderSetlistItems, removeItemFromSetlist, } from '../controllers/setlistController.js';
+import { authMiddleware } from '../middleware/auth.js';
 const router = Router({ mergeParams: true }); // Allow inherited params like groupId
 // Apply auth middleware to all routes
 router.use(authMiddleware);

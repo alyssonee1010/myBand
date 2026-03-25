@@ -5,20 +5,21 @@ import {
   getGroupContent,
   getContentFile,
   deleteContent,
-} from '../controllers/contentController';
-import { asyncHandler } from '../utils/errors';
-import { authMiddleware } from '../middleware/auth';
+} from '../controllers/contentController.js';
+import { asyncHandler } from '../utils/errors.js';
+import { authMiddleware } from '../middleware/auth.js';
+import { ensureUploadDirExists } from '../utils/uploads.js';
 import multer from 'multer';
-import path from 'path';
 
 const router = Router({ mergeParams: true }); // Allow inherited params like groupId
+const uploadDir = ensureUploadDirExists();
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);
 
 // Configure multer for file uploads
 const upload = multer({
-  dest: process.env.UPLOAD_DIR || './uploads',
+  dest: uploadDir,
   limits: {
     fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760'), // 10MB
   },

@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { hashPassword, comparePassword } from '../utils/crypto';
-import { generateToken } from '../utils/jwt';
-import { ApiError, asyncHandler } from '../utils/errors';
-import { normalizeEmail } from '../utils/email';
+import { hashPassword, comparePassword } from '../utils/crypto.js';
+import { generateToken } from '../utils/jwt.js';
+import { ApiError, asyncHandler } from '../utils/errors.js';
+import { normalizeEmail } from '../utils/email.js';
 
 const prisma = new PrismaClient();
 
