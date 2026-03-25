@@ -429,7 +429,7 @@ export default function SetlistPage() {
           </div>
         ) : (
           <div className="setlist-layout">
-            <section className="card setlist-viewer bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(235,235,231,0.78))]">
+            <section className="card setlist-viewer">
               <div className="setlist-viewer-header">
                 <div>
                   <p className="setlist-viewer-label">Now Viewing</p>
@@ -481,7 +481,7 @@ export default function SetlistPage() {
               )}
             </section>
 
-            <section className="card bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(235,235,231,0.78))]">
+            <section className="card">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="section-kicker">Order</p>
@@ -497,7 +497,7 @@ export default function SetlistPage() {
                       {...provided.droppableProps}
                       ref={provided.innerRef}
                       className={`mt-5 space-y-3 rounded-[28px] transition ${
-                        snapshot.isDraggingOver ? 'bg-black/[0.04] p-3' : ''
+                        snapshot.isDraggingOver ? 'bg-[rgba(255,106,0,0.08)] p-3' : ''
                       }`}
                     >
                       {setlist?.items.map((item, index) => {
@@ -518,10 +518,10 @@ export default function SetlistPage() {
                                 <div className="flex items-start justify-between gap-4">
                                   <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-3">
-                                      <span className="rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                                      <span className="rounded-full border border-orange-300/60 bg-orange-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
                                         {String(index + 1).padStart(2, '0')}
                                       </span>
-                                      <span className="rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                                      <span className="rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
                                         {item.content.contentType}
                                       </span>
                                     </div>
@@ -594,7 +594,7 @@ export default function SetlistPage() {
             <h2 className="mt-3 text-3xl font-bold tracking-tight">Add songs to this setlist</h2>
 
             {addableContent.length === 0 ? (
-              <div className="mt-6 rounded-[24px] border border-dashed border-black/20 bg-white/60 px-5 py-10 text-center">
+              <div className="mt-6 rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-5 py-10 text-center">
                 <p className="text-xl font-semibold tracking-tight">Everything is already in the setlist</p>
                 <p className="mt-2 text-sm leading-6 text-black/60">
                   Add more content to the band library if you need more songs here.
@@ -605,7 +605,7 @@ export default function SetlistPage() {
                 {addableContent.map((content) => (
                   <div
                     key={content.id}
-                    className="rounded-[24px] border border-black/10 bg-white/60 p-4"
+                    className="rounded-[24px] border border-black/10 bg-white/80 p-4"
                   >
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div>

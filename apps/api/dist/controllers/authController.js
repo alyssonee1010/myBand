@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { hashPassword, comparePassword } from '../utils/crypto.js';
 import { generateToken } from '../utils/jwt.js';
 import { ApiError, asyncHandler } from '../utils/errors.js';
-import { normalizeEmail, createEmailVerificationToken, getEmailVerificationExpiry, sendVerificationEmail, } from '../utils/email.js';
+import { normalizeEmail, createEmailVerificationToken, getEmailVerificationExpiry, getEmailVerificationCooldownSeconds, getEmailVerificationRetryAfterSeconds, sendVerificationEmail, } from '../utils/email.js';
 import fs from 'fs';
 import path from 'path';
 import { ensureUploadDirExists } from '../utils/uploads.js';
@@ -11,6 +11,16 @@ const UPLOAD_DIR = ensureUploadDirExists();
 const EMAIL_NOT_VERIFIED_MESSAGE = 'Email address is not verified. Check your inbox for a verification link.';
 const VERIFICATION_EMAIL_SENT_MESSAGE = 'Check your inbox to verify your email before logging in.';
 const VERIFICATION_EMAIL_GENERIC_MESSAGE = 'If an account exists and still needs verification, a verification email has been sent.';
+const EMAIL_VERIFICATION_RATE_LIMIT_CODE = 'EMAIL_VERIFICATION_RATE_LIMIT';
+function getVerificationRetryAfterSecondsForUser(user) {
+    return getEmailVerificationRetryAfterSeconds(user.emailVerificationLastSentAt ?? null);
+}
+function ensureEmailVerificationCanBeSent(user) {
+    const retryAfterSeconds = getVerificationRetryAfterSecondsForUser(user);
+    if (retryAfterSeconds > 0) {
+        throw new ApiError(429, `Please wait ${retryAfterSeconds} seconds before requesting another verification email.`, EMAIL_VERIFICATION_RATE_LIMIT_CODE, { retryAfterSeconds });
+    }
+}
 async function refreshEmailVerification(userId) {
     const emailVerificationToken = createEmailVerificationToken();
     const emailVerificationExpiresAt = getEmailVerificationExpiry();
@@ -19,10 +29,12 @@ async function refreshEmailVerification(userId) {
         data: {
             emailVerificationToken,
             emailVerificationExpiresAt,
+            emailVerificationLastSentAt: new Date(),
         },
     });
 }
 async function sendEmailVerificationForUser(user) {
+    ensureEmailVerificationCanBeSent(user);
     const updatedUser = await refreshEmailVerification(user.id);
     const emailResult = await sendVerificationEmail({
         email: updatedUser.email,
@@ -32,9 +44,11 @@ async function sendEmailVerificationForUser(user) {
     return {
         emailResult,
         updatedUser,
+        retryAfterSeconds: getEmailVerificationCooldownSeconds(),
     };
 }
 async function trySendEmailVerificationForUser(user) {
+    ensureEmailVerificationCanBeSent(user);
     const updatedUser = await refreshEmailVerification(user.id);
     try {
         const emailResult = await sendVerificationEmail({
@@ -45,6 +59,7 @@ async function trySendEmailVerificationForUser(user) {
         return {
             emailResult,
             updatedUser,
+            retryAfterSeconds: getEmailVerificationCooldownSeconds(),
         };
     }
     catch (error) {
@@ -57,6 +72,7 @@ async function trySendEmailVerificationForUser(user) {
             emailResult: {
                 delivered: false,
             },
+            retryAfterSeconds: getEmailVerificationCooldownSeconds(),
         };
     }
 }
@@ -101,7 +117,7 @@ export const register = asyncHandler(async (req, res) => {
         if (existingUser.emailVerifiedAt) {
             throw new ApiError(400, 'Email already registered');
         }
-        const { emailResult, updatedUser } = await trySendEmailVerificationForUser(existingUser);
+        const { emailResult, updatedUser, retryAfterSeconds } = await trySendEmailVerificationForUser(existingUser);
         res.status(200).json({
             requiresEmailVerification: true,
             message: emailResult.delivered
@@ -110,6 +126,7 @@ export const register = asyncHandler(async (req, res) => {
             user: buildSafeUser(updatedUser),
             verificationEmailSent: emailResult.delivered,
             verificationPreviewUrl: emailResult.previewUrl,
+            retryAfterSeconds,
         });
         return;
     }
@@ -134,7 +151,7 @@ export const register = asyncHandler(async (req, res) => {
             inviteeId: user.id,
         },
     });
-    const { emailResult, updatedUser } = await trySendEmailVerificationForUser(user);
+    const { emailResult, updatedUser, retryAfterSeconds } = await trySendEmailVerificationForUser(user);
     res.status(201).json({
         requiresEmailVerification: true,
         message: emailResult.delivered
@@ -143,6 +160,7 @@ export const register = asyncHandler(async (req, res) => {
         user: buildSafeUser(updatedUser),
         verificationEmailSent: emailResult.delivered,
         verificationPreviewUrl: emailResult.previewUrl,
+        retryAfterSeconds,
     });
 });
 /**
@@ -207,6 +225,7 @@ export const verifyEmail = asyncHandler(async (req, res) => {
             emailVerifiedAt: new Date(),
             emailVerificationToken: null,
             emailVerificationExpiresAt: null,
+            emailVerificationLastSentAt: null,
         },
     });
     const authToken = generateToken(verifiedUser.id);
@@ -236,10 +255,11 @@ export const resendVerificationEmail = asyncHandler(async (req, res) => {
         res.json({ message: VERIFICATION_EMAIL_GENERIC_MESSAGE });
         return;
     }
-    const { emailResult } = await sendEmailVerificationForUser(user);
+    const { emailResult, retryAfterSeconds } = await sendEmailVerificationForUser(user);
     res.json({
         message: VERIFICATION_EMAIL_GENERIC_MESSAGE,
         verificationPreviewUrl: emailResult.previewUrl,
+        retryAfterSeconds,
     });
 });
 /**

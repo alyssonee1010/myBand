@@ -274,7 +274,7 @@ export default function GroupPage() {
               )}
             </div>
 
-            <div className="card max-w-sm bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(232,232,228,0.78))]">
+            <div className="card max-w-sm">
               <p className="section-kicker">Overview</p>
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div>
@@ -294,7 +294,7 @@ export default function GroupPage() {
       <main className="container-app">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_360px]">
           <section className="space-y-6">
-            <div className="card flex flex-col gap-4 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(236,236,232,0.72))] md:flex-row md:items-center md:justify-between">
+            <div className="card flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="section-kicker">Library</p>
                 <h2 className="mt-3 text-3xl font-bold tracking-tight">Content Library</h2>
@@ -310,7 +310,7 @@ export default function GroupPage() {
 
             <div className="card">
               {contents.length === 0 ? (
-                <div className="rounded-[24px] border border-dashed border-black/20 bg-white/60 px-6 py-16 text-center">
+                <div className="rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-6 py-16 text-center">
                   <p className="text-xl font-semibold tracking-tight">No content yet</p>
                   <p className="mt-2 text-sm text-black/60">
                     Upload something to start building your shared band library.
@@ -348,7 +348,7 @@ export default function GroupPage() {
                   return (
                     <div
                       key={member.id}
-                      className="flex items-start gap-3 rounded-[24px] border border-black/10 bg-white/60 px-4 py-4"
+                      className="flex items-start gap-3 rounded-[24px] border border-black/10 bg-white/80 px-4 py-4"
                     >
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/20 bg-black text-sm font-semibold text-white">
                         {initials}
@@ -358,11 +358,11 @@ export default function GroupPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-semibold text-black">{label}</p>
                           {isCurrentUser && (
-                            <span className="rounded-full border border-black/20 bg-white px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
+                            <span className="rounded-full border border-orange-300/70 bg-orange-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
                               You
                             </span>
                           )}
-                          <span className="rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                          <span className="rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
                             {member.role}
                           </span>
                         </div>
@@ -451,7 +451,7 @@ export default function GroupPage() {
               )}
 
               {pendingInvitations.length === 0 ? (
-                <p className="mt-5 rounded-[24px] border border-dashed border-black/20 bg-white/60 px-4 py-6 text-sm text-black/60">
+                <p className="mt-5 rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-4 py-6 text-sm text-black/60">
                   No pending invitations right now.
                 </p>
               ) : (
@@ -459,11 +459,11 @@ export default function GroupPage() {
                   {pendingInvitations.map((invitation) => (
                     <div
                       key={invitation.id}
-                      className="rounded-[24px] border border-black/10 bg-white/60 px-4 py-4"
+                      className="rounded-[24px] border border-black/10 bg-white/80 px-4 py-4"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="font-semibold text-black">{invitation.email}</p>
-                        <span className="rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                        <span className="rounded-full border border-orange-300/60 bg-orange-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
                           Pending
                         </span>
                       </div>

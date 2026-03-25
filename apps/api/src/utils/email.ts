@@ -14,6 +14,26 @@ function getVerificationTtlHours(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 24;
 }
 
+export function getEmailVerificationCooldownSeconds(): number {
+  const parsed = Number.parseInt(process.env.EMAIL_VERIFICATION_COOLDOWN_SECONDS || '30', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+}
+
+export function getEmailVerificationRetryAfterSeconds(lastSentAt?: Date | null): number {
+  if (!lastSentAt) {
+    return 0;
+  }
+
+  const cooldownMs = getEmailVerificationCooldownSeconds() * 1000;
+  const remainingMs = cooldownMs - (Date.now() - lastSentAt.getTime());
+
+  if (remainingMs <= 0) {
+    return 0;
+  }
+
+  return Math.ceil(remainingMs / 1000);
+}
+
 function getMailConfig() {
   const user = process.env.GMAIL_APP_USER?.trim();
   const pass = process.env.GMAIL_APP_PASSWORD?.trim();

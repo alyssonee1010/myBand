@@ -2,7 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 export declare class ApiError extends Error {
     statusCode: number;
     code?: string | undefined;
-    constructor(statusCode: number, message: string, code?: string | undefined);
+    details?: Record<string, unknown> | undefined;
+    constructor(statusCode: number, message: string, code?: string | undefined, details?: Record<string, unknown> | undefined);
 }
 /**
  * Global error handler middleware

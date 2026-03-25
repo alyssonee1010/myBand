@@ -7,6 +7,8 @@ import {
   normalizeEmail,
   createEmailVerificationToken,
   getEmailVerificationExpiry,
+  getEmailVerificationCooldownSeconds,
+  getEmailVerificationRetryAfterSeconds,
   sendVerificationEmail,
 } from '../utils/email.js';
 import fs from 'fs';
@@ -19,6 +21,24 @@ const EMAIL_NOT_VERIFIED_MESSAGE = 'Email address is not verified. Check your in
 const VERIFICATION_EMAIL_SENT_MESSAGE = 'Check your inbox to verify your email before logging in.';
 const VERIFICATION_EMAIL_GENERIC_MESSAGE =
   'If an account exists and still needs verification, a verification email has been sent.';
+const EMAIL_VERIFICATION_RATE_LIMIT_CODE = 'EMAIL_VERIFICATION_RATE_LIMIT';
+
+function getVerificationRetryAfterSecondsForUser(user: { emailVerificationLastSentAt?: Date | null }) {
+  return getEmailVerificationRetryAfterSeconds(user.emailVerificationLastSentAt ?? null);
+}
+
+function ensureEmailVerificationCanBeSent(user: { emailVerificationLastSentAt?: Date | null }) {
+  const retryAfterSeconds = getVerificationRetryAfterSecondsForUser(user);
+
+  if (retryAfterSeconds > 0) {
+    throw new ApiError(
+      429,
+      `Please wait ${retryAfterSeconds} seconds before requesting another verification email.`,
+      EMAIL_VERIFICATION_RATE_LIMIT_CODE,
+      { retryAfterSeconds }
+    );
+  }
+}
 
 async function refreshEmailVerification(userId: string) {
   const emailVerificationToken = createEmailVerificationToken();
@@ -29,11 +49,18 @@ async function refreshEmailVerification(userId: string) {
     data: {
       emailVerificationToken,
       emailVerificationExpiresAt,
+      emailVerificationLastSentAt: new Date(),
     },
   });
 }
 
-async function sendEmailVerificationForUser(user: { id: string; email: string; name?: string | null }) {
+async function sendEmailVerificationForUser(user: {
+  id: string;
+  email: string;
+  name?: string | null;
+  emailVerificationLastSentAt?: Date | null;
+}) {
+  ensureEmailVerificationCanBeSent(user);
   const updatedUser = await refreshEmailVerification(user.id);
   const emailResult = await sendVerificationEmail({
     email: updatedUser.email,
@@ -44,10 +71,17 @@ async function sendEmailVerificationForUser(user: { id: string; email: string; n
   return {
     emailResult,
     updatedUser,
+    retryAfterSeconds: getEmailVerificationCooldownSeconds(),
   };
 }
 
-async function trySendEmailVerificationForUser(user: { id: string; email: string; name?: string | null }) {
+async function trySendEmailVerificationForUser(user: {
+  id: string;
+  email: string;
+  name?: string | null;
+  emailVerificationLastSentAt?: Date | null;
+}) {
+  ensureEmailVerificationCanBeSent(user);
   const updatedUser = await refreshEmailVerification(user.id);
 
   try {
@@ -60,6 +94,7 @@ async function trySendEmailVerificationForUser(user: { id: string; email: string
     return {
       emailResult,
       updatedUser,
+      retryAfterSeconds: getEmailVerificationCooldownSeconds(),
     };
   } catch (error) {
     console.error('[EMAIL] Failed to send verification email', {
@@ -72,6 +107,7 @@ async function trySendEmailVerificationForUser(user: { id: string; email: string
       emailResult: {
         delivered: false,
       },
+      retryAfterSeconds: getEmailVerificationCooldownSeconds(),
     };
   }
 }
@@ -128,7 +164,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       throw new ApiError(400, 'Email already registered');
     }
 
-    const { emailResult, updatedUser } = await trySendEmailVerificationForUser(existingUser);
+    const { emailResult, updatedUser, retryAfterSeconds } = await trySendEmailVerificationForUser(existingUser);
 
     res.status(200).json({
       requiresEmailVerification: true,
@@ -138,6 +174,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       user: buildSafeUser(updatedUser),
       verificationEmailSent: emailResult.delivered,
       verificationPreviewUrl: emailResult.previewUrl,
+      retryAfterSeconds,
     });
     return;
   }
@@ -166,7 +203,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     },
   });
 
-  const { emailResult, updatedUser } = await trySendEmailVerificationForUser(user);
+  const { emailResult, updatedUser, retryAfterSeconds } = await trySendEmailVerificationForUser(user);
 
   res.status(201).json({
     requiresEmailVerification: true,
@@ -176,6 +213,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     user: buildSafeUser(updatedUser),
     verificationEmailSent: emailResult.delivered,
     verificationPreviewUrl: emailResult.previewUrl,
+    retryAfterSeconds,
   });
 });
 
@@ -255,6 +293,7 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
       emailVerifiedAt: new Date(),
       emailVerificationToken: null,
       emailVerificationExpiresAt: null,
+      emailVerificationLastSentAt: null,
     },
   });
 
@@ -291,11 +330,12 @@ export const resendVerificationEmail = asyncHandler(async (req: Request, res: Re
     return;
   }
 
-  const { emailResult } = await sendEmailVerificationForUser(user);
+  const { emailResult, retryAfterSeconds } = await sendEmailVerificationForUser(user);
 
   res.json({
     message: VERIFICATION_EMAIL_GENERIC_MESSAGE,
     verificationPreviewUrl: emailResult.previewUrl,
+    retryAfterSeconds,
   });
 });
 

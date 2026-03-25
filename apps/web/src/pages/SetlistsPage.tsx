@@ -113,10 +113,7 @@ export default function SetlistsPage() {
       </header>
 
       <main className="container-app space-y-8">
-        <form
-          onSubmit={handleCreateSetlist}
-          className="card bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(233,233,229,0.74))]"
-        >
+        <form onSubmit={handleCreateSetlist} className="card">
           <div>
             <p className="section-kicker">Create</p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight">Build a new setlist</h2>
@@ -169,7 +166,7 @@ export default function SetlistsPage() {
                   to={`/groups/${groupId}/setlists/${setlist.id}`}
                   className="group block"
                 >
-                  <div className="card h-full bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(236,236,232,0.7))] transition duration-200 group-hover:-translate-y-1 group-hover:border-black/20">
+                  <div className="card h-full transition duration-200 group-hover:-translate-y-1 group-hover:border-orange-400/50">
                     <p className="section-kicker">Setlist {String(index + 1).padStart(2, '0')}</p>
                     <h3 className="mt-4 text-2xl font-bold tracking-tight">{setlist.name}</h3>
                     <p className="mt-3 text-sm leading-6 text-black/60">
@@ -177,7 +174,7 @@ export default function SetlistsPage() {
                     </p>
                     <div className="mt-8 flex items-center justify-between">
                       <span className="stat-pill">Open</span>
-                      <span className="text-lg text-black/60 transition group-hover:translate-x-1 group-hover:text-black">
+                      <span className="text-lg text-orange-600 transition group-hover:translate-x-1 group-hover:text-black">
                         →
                       </span>
                     </div>

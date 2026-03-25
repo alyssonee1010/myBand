@@ -38,15 +38,15 @@ export default function ContentList({ contents, onDelete, groupId }: Props) {
       {contents.map((content, index) => (
         <div
           key={content.id}
-          className="rounded-[26px] border border-black/10 bg-[rgba(255,255,255,0.6)] p-5"
+          className="rounded-[26px] border border-black/10 bg-white/[0.82] p-5"
         >
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="rounded-full border border-black/10 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                <span className="rounded-full border border-orange-300/60 bg-orange-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <span className="rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/60">
+                <span className="rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70">
                   {getTypeLabel(content.contentType)}
                 </span>
               </div>

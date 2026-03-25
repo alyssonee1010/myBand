@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../lib/api'
 import '../styles/auth.css'
 
+const EMAIL_VERIFICATION_RATE_LIMIT_CODE = 'EMAIL_VERIFICATION_RATE_LIMIT'
+
 export default function RegisterPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({ email: '', password: '', name: '' })
@@ -43,11 +45,26 @@ export default function RegisterPage() {
         navigate(`/auth/verify-email?email=${encodeURIComponent(formData.email.trim())}`, {
           state: {
             verificationPreviewUrl: response.verificationPreviewUrl,
+            initialCooldownSeconds: response.retryAfterSeconds,
+            initialMessage: response.message,
+            initialTone: 'success',
           },
         })
       }, 800)
     } catch (err: any) {
       const errorMsg = err?.message || err?.toString() || 'Registration failed'
+
+      if (err?.status === 429 && err?.response?.code === EMAIL_VERIFICATION_RATE_LIMIT_CODE) {
+        navigate(`/auth/verify-email?email=${encodeURIComponent(formData.email.trim())}`, {
+          state: {
+            initialCooldownSeconds: err?.response?.retryAfterSeconds || 30,
+            initialMessage: errorMsg,
+            initialTone: 'error',
+          },
+        })
+        return
+      }
+
       setError(errorMsg)
     } finally {
       setLoading(false)
@@ -57,18 +74,18 @@ export default function RegisterPage() {
   return (
     <div className="app-shell flex min-h-screen items-center">
       <main className="container-app grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center">
-        <section className="glass-card bg-[linear-gradient(145deg,rgba(10,10,10,0.96),rgba(52,52,52,0.88))]">
-          <p className="text-xs font-medium uppercase tracking-[0.32em] text-white/60">MyBand</p>
+        <section className="glass-card">
+          <p className="text-xs font-medium uppercase tracking-[0.32em] text-white/70">MyBand</p>
           <h1 className="mt-5 text-5xl font-bold tracking-tight text-white md:text-6xl">
-            Build a tighter <span className="app-brand">band workflow.</span>
+            Build a tighter <span className="app-brand text-orange-400">band workflow.</span>
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-white/70">
+          <p className="mt-5 max-w-xl text-base leading-7 text-white/[0.74]">
             Create your account, accept invitations, and start organizing rehearsals with a calmer
             interface.
           </p>
         </section>
 
-        <section className="card bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(238,238,234,0.76))]">
+        <section className="card">
           <p className="section-kicker">Sign Up</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight">Create your account</h2>
 
@@ -140,7 +157,7 @@ export default function RegisterPage() {
 
           <p className="mt-6 text-sm text-black/60">
             Already have an account?{' '}
-            <Link to="/auth/login" className="font-semibold text-black underline-offset-4 hover:underline">
+            <Link to="/auth/login" className="font-semibold text-orange-600 underline-offset-4 hover:underline">
               Login
             </Link>
           </p>

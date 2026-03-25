@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 
 export class ApiError extends Error {
-  constructor(public statusCode: number, message: string, public code?: string) {
+  constructor(
+    public statusCode: number,
+    message: string,
+    public code?: string,
+    public details?: Record<string, unknown>
+  ) {
     super(message);
     this.name = 'ApiError';
   }
@@ -25,9 +30,18 @@ export function errorHandler(
   });
 
   if (err instanceof ApiError) {
+    const retryAfterSeconds =
+      typeof err.details?.retryAfterSeconds === 'number' ? err.details.retryAfterSeconds : undefined;
+
+    if (retryAfterSeconds) {
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+    }
+
     res.status(err.statusCode).json({
       error: err.message,
       code: err.code,
+      details: err.details,
+      retryAfterSeconds,
       status: err.statusCode,
       timestamp: new Date().toISOString(),
     });

@@ -56,17 +56,17 @@ export default function LoginPage() {
   return (
     <div className="app-shell flex min-h-screen items-center">
       <main className="container-app grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center">
-        <section className="glass-card bg-[linear-gradient(145deg,rgba(10,10,10,0.96),rgba(52,52,52,0.88))]">
-          <p className="text-xs font-medium uppercase tracking-[0.32em] text-white/60">MyBand</p>
+        <section className="glass-card">
+          <p className="text-xs font-medium uppercase tracking-[0.32em] text-white/70">MyBand</p>
           <h1 className="mt-5 text-5xl font-bold tracking-tight text-white md:text-6xl">
-            Step back into the <span className="app-brand">session.</span>
+            Step back into the <span className="app-brand text-orange-400">session.</span>
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-white/70">
+          <p className="mt-5 max-w-xl text-base leading-7 text-white/[0.74]">
             Open your bands, accept invites, and pick up where the last rehearsal left off.
           </p>
         </section>
 
-        <section className="card bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(238,238,234,0.76))]">
+        <section className="card">
           <p className="section-kicker">Log In</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight">Welcome back</h2>
 
@@ -81,7 +81,7 @@ export default function LoginPage() {
               Need a new verification link?{' '}
               <Link
                 to={`/auth/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
-                className="font-semibold text-black underline-offset-4 hover:underline"
+                className="font-semibold text-orange-600 underline-offset-4 hover:underline"
               >
                 Verify your email
               </Link>
@@ -134,7 +134,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-sm text-black/60">
             Don&apos;t have an account?{' '}
-            <Link to="/auth/register" className="font-semibold text-black underline-offset-4 hover:underline">
+            <Link to="/auth/register" className="font-semibold text-orange-600 underline-offset-4 hover:underline">
               Sign up
             </Link>
           </p>

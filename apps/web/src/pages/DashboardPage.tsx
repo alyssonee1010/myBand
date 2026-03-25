@@ -174,14 +174,14 @@ export default function DashboardPage() {
 
       <main className="container-app space-y-8">
         {pendingInvitations.length > 0 && (
-          <section className="card bg-[linear-gradient(135deg,rgba(17,17,17,0.98),rgba(58,58,58,0.92))] text-white">
+          <section className="glass-card">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
-                <p className="text-xs font-medium uppercase tracking-[0.3em] text-white/60">
+                <p className="text-xs font-medium uppercase tracking-[0.3em] text-white/70">
                   Pending Invitations
                 </p>
                 <h2 className="mt-3 text-3xl font-bold tracking-tight">Requests waiting on you</h2>
-                <p className="mt-2 text-sm leading-6 text-white/70">
+                <p className="mt-2 text-sm leading-6 text-white/[0.74]">
                   Accept an invitation to join a band. Revoked requests disappear automatically and
                   can no longer be accepted.
                 </p>
@@ -199,17 +199,17 @@ export default function DashboardPage() {
                 >
                   <p className="text-2xl font-semibold tracking-tight">{invitation.group.name}</p>
                   {invitation.group.description && (
-                    <p className="mt-2 text-sm leading-6 text-white/60">
+                    <p className="mt-2 text-sm leading-6 text-white/70">
                       {invitation.group.description}
                     </p>
                   )}
-                  <p className="mt-4 text-sm text-white/60">
+                  <p className="mt-4 text-sm text-white/70">
                     Invited by {invitation.invitedBy.name || invitation.invitedBy.email}
                   </p>
 
                   <button
                     onClick={() => void handleAcceptInvitation(invitation)}
-                    className="btn-secondary mt-5 w-full border-white/20 bg-white text-black hover:border-white hover:bg-transparent hover:text-white"
+                    className="btn-primary mt-5 w-full"
                     disabled={acceptingInvitationId === invitation.id}
                   >
                     {acceptingInvitationId === invitation.id ? 'Accepting...' : 'Accept Invitation'}
@@ -234,7 +234,7 @@ export default function DashboardPage() {
         </section>
 
         {groups.length === 0 ? (
-          <div className="card bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(228,228,224,0.72))] py-16 text-center">
+          <div className="card py-16 text-center">
             <p className="text-2xl font-semibold tracking-tight">No bands yet</p>
             <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-black/60">
               Create your first band to start inviting members, uploading charts, and building
