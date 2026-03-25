@@ -223,8 +223,8 @@ export default function DashboardPage() {
         <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="section-kicker">Your Bands</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight">Everything you’re building</h2>
-            <p className="mt-2 text-sm leading-6 text-black/60">
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-white/75">Everything you’re building</h2>
+            <p className="mt-2 text-sm leading-6 text-white/60">
               Open a band to manage members, shared files, and setlists.
             </p>
           </div>

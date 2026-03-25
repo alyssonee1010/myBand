@@ -154,6 +154,13 @@ export default function VerifyEmailPage() {
         setResending(true);
         try {
             const response = await authApi.resendVerificationEmail(email.trim());
+            if (response.alreadyVerified) {
+                setSuccess(response.message || 'This email is already activated. You can log in now.');
+                setPreviewUrl('');
+                setCooldownRemaining(0);
+                clearStoredCooldown(email.trim());
+                return;
+            }
             setSuccess(response.message || 'Verification email sent.');
             setPreviewUrl(response.verificationPreviewUrl || '');
             const nextCooldown = response.retryAfterSeconds || 30;

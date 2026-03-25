@@ -11,6 +11,7 @@ const UPLOAD_DIR = ensureUploadDirExists();
 const EMAIL_NOT_VERIFIED_MESSAGE = 'Email address is not verified. Check your inbox for a verification link.';
 const VERIFICATION_EMAIL_SENT_MESSAGE = 'Check your inbox to verify your email before logging in.';
 const VERIFICATION_EMAIL_GENERIC_MESSAGE = 'If an account exists and still needs verification, a verification email has been sent.';
+const EMAIL_ALREADY_VERIFIED_MESSAGE = 'This email is already activated. You can log in now.';
 const EMAIL_VERIFICATION_RATE_LIMIT_CODE = 'EMAIL_VERIFICATION_RATE_LIMIT';
 function getVerificationRetryAfterSecondsForUser(user) {
     return getEmailVerificationRetryAfterSeconds(user.emailVerificationLastSentAt ?? null);
@@ -251,8 +252,15 @@ export const resendVerificationEmail = asyncHandler(async (req, res) => {
             },
         },
     });
-    if (!user || user.emailVerifiedAt) {
+    if (!user) {
         res.json({ message: VERIFICATION_EMAIL_GENERIC_MESSAGE });
+        return;
+    }
+    if (user.emailVerifiedAt) {
+        res.json({
+            message: EMAIL_ALREADY_VERIFIED_MESSAGE,
+            alreadyVerified: true,
+        });
         return;
     }
     const { emailResult, retryAfterSeconds } = await sendEmailVerificationForUser(user);
