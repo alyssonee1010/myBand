@@ -45,7 +45,7 @@ export default function LandingPage() {
         <aside className="card">
           <p className="section-kicker">What You Get</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight">
-            Strong black. Clean white. Orange where it matters.
+            The tool your band needs to stay organized.
           </h2>
 
           <div className="mt-8 space-y-4">
