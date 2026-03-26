@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { hashPassword, comparePassword } from '../utils/crypto.js';
 import { generateToken } from '../utils/jwt.js';
 import { ApiError, asyncHandler } from '../utils/errors.js';
-import { normalizeEmail, createEmailVerificationToken, getEmailVerificationExpiry, getEmailVerificationCooldownSeconds, getEmailVerificationRetryAfterSeconds, sendVerificationEmail, } from '../utils/email.js';
+import { normalizeEmail, createEmailVerificationToken, getEmailVerificationExpiry, getEmailVerificationCooldownSeconds, getEmailVerificationRetryAfterSeconds, sendVerificationEmail, createPasswordResetToken, getPasswordResetExpiry, getPasswordResetCooldownSeconds, getPasswordResetTtlMinutes, sendPasswordResetEmail, } from '../utils/email.js';
 import fs from 'fs';
 import path from 'path';
 import { ensureUploadDirExists } from '../utils/uploads.js';
@@ -441,5 +441,125 @@ export const deleteAccount = asyncHandler(async (req, res) => {
         .map((file) => file.fileUrl)
         .filter((fileUrl) => Boolean(fileUrl)));
     res.json({ message: 'Your account has been deleted.' });
+});
+/**
+ * Request a password reset email. Unverified accounts receive a fresh
+ * verification email instead so the flow still gets the user back in.
+ */
+export const forgotPassword = asyncHandler(async (req, res) => {
+    const normalizedEmail = req.body.email ? normalizeEmail(req.body.email) : '';
+    if (!normalizedEmail) {
+        throw new ApiError(400, 'Email is required');
+    }
+    // Always return the same message to prevent email enumeration
+    const genericMessage = 'If an account with that email exists, we sent the next step to get you back in.';
+    const user = await prisma.user.findFirst({
+        where: {
+            email: {
+                equals: normalizedEmail,
+                mode: 'insensitive',
+            },
+        },
+    });
+    if (!user) {
+        // Don't reveal whether the account exists
+        res.json({ message: genericMessage });
+        return;
+    }
+    if (!user.emailVerifiedAt) {
+        console.info('[AUTH] Forgot password requested for unverified account; sending verification email instead', {
+            email: normalizedEmail,
+        });
+        const { emailResult, retryAfterSeconds } = await trySendEmailVerificationForUser(user);
+        res.json({
+            message: genericMessage,
+            nextStep: 'verify-email',
+            emailPreviewUrl: emailResult.previewUrl,
+            verificationPreviewUrl: emailResult.previewUrl,
+            retryAfterSeconds,
+        });
+        return;
+    }
+    // Rate-limit: check if a reset was recently requested
+    if (user.passwordResetExpiresAt) {
+        const cooldownSeconds = getPasswordResetCooldownSeconds();
+        const expiresAt = user.passwordResetExpiresAt.getTime();
+        const ttlMs = getPasswordResetTtlMinutes() * 60 * 1000;
+        const sentAt = expiresAt - ttlMs;
+        const elapsedMs = Date.now() - sentAt;
+        if (elapsedMs < cooldownSeconds * 1000) {
+            const retryAfterSeconds = Math.ceil((cooldownSeconds * 1000 - elapsedMs) / 1000);
+            throw new ApiError(429, `Please wait ${retryAfterSeconds} seconds before requesting another reset email.`, 'PASSWORD_RESET_RATE_LIMIT', { retryAfterSeconds });
+        }
+    }
+    const passwordResetToken = createPasswordResetToken();
+    const passwordResetExpiresAt = getPasswordResetExpiry();
+    await prisma.user.update({
+        where: { id: user.id },
+        data: {
+            passwordResetToken,
+            passwordResetExpiresAt,
+        },
+    });
+    try {
+        const emailResult = await sendPasswordResetEmail({
+            email: user.email,
+            name: user.name,
+            token: passwordResetToken,
+        });
+        res.json({
+            message: genericMessage,
+            nextStep: 'reset-password',
+            emailPreviewUrl: emailResult.previewUrl,
+            resetPreviewUrl: emailResult.previewUrl,
+        });
+    }
+    catch (error) {
+        console.error('[AUTH] Failed to send password reset email', {
+            email: normalizedEmail,
+            message: error instanceof Error ? error.message : 'Unknown error',
+        });
+        res.json({ message: genericMessage });
+    }
+});
+/**
+ * Reset the password using a valid token
+ */
+export const resetPassword = asyncHandler(async (req, res) => {
+    const token = typeof req.body.token === 'string' ? req.body.token.trim() : '';
+    const newPassword = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!token) {
+        throw new ApiError(400, 'Reset token is required', 'PASSWORD_RESET_INVALID');
+    }
+    if (!newPassword || newPassword.length < 6) {
+        throw new ApiError(400, 'Password must be at least 6 characters');
+    }
+    const user = await prisma.user.findFirst({
+        where: {
+            passwordResetToken: token,
+            passwordResetExpiresAt: {
+                gt: new Date(),
+            },
+        },
+    });
+    if (!user) {
+        throw new ApiError(400, 'Reset link is invalid or has expired. Request a new one.', 'PASSWORD_RESET_INVALID');
+    }
+    const hashedPassword = await hashPassword(newPassword);
+    const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+            password: hashedPassword,
+            passwordResetToken: null,
+            passwordResetExpiresAt: null,
+        },
+    });
+    // Auto-login after password reset
+    const authToken = generateToken(updatedUser.id);
+    res.json({
+        message: 'Password has been reset. You are now signed in.',
+        token: authToken,
+        user: buildSafeUser(updatedUser),
+    });
 });
 //# sourceMappingURL=authController.js.map

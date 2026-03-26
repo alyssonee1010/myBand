@@ -23,4 +23,13 @@ export declare const getProfile: (req: Request, res: Response, next: import("exp
  * Delete the authenticated user's account
  */
 export declare const deleteAccount: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
+ * Request a password reset email. Unverified accounts receive a fresh
+ * verification email instead so the flow still gets the user back in.
+ */
+export declare const forgotPassword: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
+ * Reset the password using a valid token
+ */
+export declare const resetPassword: (req: Request, res: Response, next: import("express").NextFunction) => void;
 //# sourceMappingURL=authController.d.ts.map

@@ -6,6 +6,8 @@ import {
   verifyEmail,
   resendVerificationEmail,
   deleteAccount,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/authController.js';
 import { asyncHandler } from '../utils/errors.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -52,5 +54,19 @@ router.get('/me', authMiddleware, asyncHandler(getProfile));
  * @body { password }
  */
 router.delete('/account', authMiddleware, asyncHandler(deleteAccount));
+
+/**
+ * @route POST /api/auth/forgot-password
+ * @desc Send a password reset email
+ * @body { email }
+ */
+router.post('/forgot-password', asyncHandler(forgotPassword));
+
+/**
+ * @route POST /api/auth/reset-password
+ * @desc Reset password with a valid token
+ * @body { token, password }
+ */
+router.post('/reset-password', asyncHandler(resetPassword));
 
 export default router;

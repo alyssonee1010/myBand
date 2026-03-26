@@ -327,3 +327,144 @@ export async function sendVerificationEmail({
     };
   }
 }
+
+// ============================================================================
+// Password Reset
+// ============================================================================
+
+export function getPasswordResetTtlMinutes(): number {
+  const parsed = Number.parseInt(process.env.PASSWORD_RESET_TTL_MINUTES || '30', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+}
+
+export function getPasswordResetCooldownSeconds(): number {
+  const parsed = Number.parseInt(process.env.PASSWORD_RESET_COOLDOWN_SECONDS || '60', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60;
+}
+
+export function createPasswordResetToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+export function getPasswordResetExpiry(): Date {
+  return new Date(Date.now() + getPasswordResetTtlMinutes() * 60 * 1000);
+}
+
+export function buildPasswordResetUrl(token: string): string {
+  return `${getAppBaseUrl()}/auth/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+function buildPasswordResetEmail({
+  name,
+  resetUrl,
+}: {
+  name?: string | null;
+  resetUrl: string;
+}) {
+  const greetingName = name?.trim() || 'there';
+  const ttl = getPasswordResetTtlMinutes();
+
+  return {
+    subject: 'Reset your password for MyBand',
+    text: [
+      `Hi ${greetingName},`,
+      '',
+      'We received a request to reset your MyBand password.',
+      'Open this link to choose a new password:',
+      resetUrl,
+      '',
+      `This link expires in ${ttl} minutes.`,
+      '',
+      'If you did not request a password reset, you can safely ignore this email.',
+    ].join('\n'),
+    html: `
+      <div style="margin:0;padding:24px 0;background:#fff6ef;font-family:'Segoe UI',Arial,sans-serif;color:#101010;">
+        <div style="max-width:560px;margin:0 auto;padding:0 16px;">
+          <div style="border:1px solid rgba(16,16,16,0.08);border-radius:28px;overflow:hidden;background:#ffffff;box-shadow:0 18px 42px rgba(16,16,16,0.08);">
+            <div style="padding:24px 28px;background:linear-gradient(135deg,#050505 0%,#1f1207 100%);color:#ffffff;">
+              <div style="font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:rgba(255,255,255,0.68);">MyBand</div>
+              <h1 style="margin:14px 0 0;font-size:30px;line-height:1.1;font-weight:700;">Reset your password</h1>
+            </div>
+            <div style="padding:28px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi ${greetingName},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#2c2c2c;">
+                We received a request to reset your MyBand password. Click the button below to choose a new one.
+              </p>
+              <div style="margin:28px 0;">
+                <a href="${resetUrl}" style="display:inline-block;padding:14px 22px;border-radius:999px;background:linear-gradient(135deg,#ff6a00 0%,#ff3d00 100%);color:#ffffff;text-decoration:none;font-weight:700;">
+                  Reset Password
+                </a>
+              </div>
+              <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#5b5b5b;">
+                This link expires in ${ttl} minutes.
+              </p>
+              <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#5b5b5b;">
+                If the button does not work, copy and paste this URL into your browser:
+              </p>
+              <p style="margin:0 0 20px;font-size:14px;line-height:1.7;word-break:break-all;">
+                <a href="${resetUrl}" style="color:#ff6a00;text-decoration:none;">${resetUrl}</a>
+              </p>
+              <p style="margin:0;font-size:13px;line-height:1.7;color:#7a7a7a;">
+                If you did not request this, you can safely ignore this email. Your password will remain unchanged.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+  };
+}
+
+export async function sendPasswordResetEmail({
+  email,
+  name,
+  token,
+}: {
+  email: string;
+  name?: string | null;
+  token: string;
+}): Promise<{ previewUrl?: string; delivered: boolean }> {
+  const resetUrl = buildPasswordResetUrl(token);
+  const {
+    googleClientId,
+    googleClientSecret,
+    googleRefreshToken,
+    from,
+  } = getMailConfig();
+  const message = buildPasswordResetEmail({ name, resetUrl });
+
+  try {
+    if (googleClientId && googleClientSecret && googleRefreshToken) {
+      const accessToken = await fetchGoogleAccessToken({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+        refreshToken: googleRefreshToken,
+      });
+
+      await sendWithGmailApi({
+        accessToken,
+        from,
+        to: email,
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+      });
+
+      return { delivered: true };
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Email delivery is not configured.');
+    }
+
+    console.warn(`[EMAIL] Password reset email was not sent to ${email}. Use this URL in development: ${resetUrl}`);
+    return { delivered: false, previewUrl: resetUrl };
+  } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      throw error;
+    }
+
+    console.warn(`[EMAIL] Password reset email was not sent to ${email}. Use this URL in development: ${resetUrl}`);
+    return { delivered: false, previewUrl: resetUrl };
+  }
+}

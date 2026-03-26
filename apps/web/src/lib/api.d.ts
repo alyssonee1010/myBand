@@ -7,6 +7,8 @@ export declare const authApi: {
     resendVerificationEmail: (email: string) => Promise<any>;
     getProfile: () => Promise<any>;
     deleteAccount: (password: string) => Promise<any>;
+    forgotPassword: (email: string) => Promise<any>;
+    resetPassword: (token: string, password: string) => Promise<any>;
 };
 export declare const groupApi: {
     createGroup: (name: string, description?: string) => Promise<any>;

@@ -96,6 +96,17 @@ export const authApi = {
         });
         return data;
     },
+    forgotPassword: async (email) => {
+        const { data } = await apiClient.post('/auth/forgot-password', { email });
+        return data;
+    },
+    resetPassword: async (token, password) => {
+        const { data } = await apiClient.post('/auth/reset-password', { token, password });
+        if (data.token) {
+            await setToken(data.token);
+        }
+        return data;
+    },
 };
 // Group API
 export const groupApi = {
