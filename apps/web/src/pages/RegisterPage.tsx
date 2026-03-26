@@ -9,8 +9,14 @@ export default function RegisterPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({ email: '', password: '', name: '' })
   const [error, setError] = useState('')
+  const [errorNoticeId, setErrorNoticeId] = useState(0)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
+
+  const showError = (message: string) => {
+    setErrorNoticeId((current) => current + 1)
+    setError(message)
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -26,13 +32,13 @@ export default function RegisterPage() {
     setLoading(true)
 
     if (!formData.email.trim() || !formData.password.trim()) {
-      setError('Email and password are required')
+      showError('Email and password are required')
       setLoading(false)
       return
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters')
+      showError('Password must be at least 6 characters')
       setLoading(false)
       return
     }
@@ -65,7 +71,7 @@ export default function RegisterPage() {
         return
       }
 
-      setError(errorMsg)
+      showError(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -90,7 +96,7 @@ export default function RegisterPage() {
           <h2 className="mt-3 text-3xl font-bold tracking-tight">Create your account</h2>
 
           {error && (
-            <div className="mt-5 status-banner status-banner-muted">
+            <div key={`register-error-${errorNoticeId}`} className="mt-5 status-banner status-banner-muted status-banner-attention">
               {error}
             </div>
           )}

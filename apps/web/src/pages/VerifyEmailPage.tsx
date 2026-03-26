@@ -91,6 +91,7 @@ export default function VerifyEmailPage() {
   const [email, setEmail] = useState(initialEmail)
   const [loading, setLoading] = useState(Boolean(token))
   const [resending, setResending] = useState(false)
+  const [errorNoticeId, setErrorNoticeId] = useState(0)
   const [error, setError] = useState(
     navigationState?.initialTone === 'error' ? navigationState.initialMessage || '' : ''
   )
@@ -107,6 +108,11 @@ export default function VerifyEmailPage() {
   })
   const [previewUrl, setPreviewUrl] = useState(navigationState?.verificationPreviewUrl || '')
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
+
+  const showError = (message: string) => {
+    setErrorNoticeId((current) => current + 1)
+    setError(message)
+  }
 
   useEffect(() => {
     const initialCooldownSeconds = navigationState?.initialCooldownSeconds || 0
@@ -167,7 +173,7 @@ export default function VerifyEmailPage() {
           return
         }
 
-        setError(err?.message || 'Verification failed')
+        showError(err?.message || 'Verification failed')
         setSuccess('')
       } finally {
         if (!cancelled) {
@@ -189,7 +195,7 @@ export default function VerifyEmailPage() {
     setPreviewUrl('')
 
     if (!email.trim()) {
-      setError('Enter your email address to resend the verification link.')
+      showError('Enter your email address to resend the verification link.')
       return
     }
 
@@ -218,7 +224,7 @@ export default function VerifyEmailPage() {
         persistCooldown(email.trim(), nextCooldown)
       }
 
-      setError(err?.message || 'Failed to resend verification email')
+      showError(err?.message || 'Failed to resend verification email')
       setSuccess('')
     } finally {
       setResending(false)
@@ -243,7 +249,7 @@ export default function VerifyEmailPage() {
           <p className="section-kicker">Verify Email</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight">Confirm your address</h2>
 
-          {error && <div className="mt-5 status-banner status-banner-muted">{error}</div>}
+          {error && <div key={`verify-error-${errorNoticeId}`} className="mt-5 status-banner status-banner-muted status-banner-attention">{error}</div>}
 
           {success && <div className="mt-5 status-banner status-banner-strong">{success}</div>}
 

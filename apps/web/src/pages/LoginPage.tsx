@@ -7,9 +7,15 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
+  const [errorNoticeId, setErrorNoticeId] = useState(0)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [unverifiedEmail, setUnverifiedEmail] = useState('')
+
+  const showError = (message: string) => {
+    setErrorNoticeId((current) => current + 1)
+    setError(message)
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -26,7 +32,7 @@ export default function LoginPage() {
     setLoading(true)
 
     if (!formData.email.trim() || !formData.password.trim()) {
-      setError('Email and password are required')
+      showError('Email and password are required')
       setLoading(false)
       return
     }
@@ -47,7 +53,7 @@ export default function LoginPage() {
       if (err?.status === 403 && err?.response?.code === 'EMAIL_NOT_VERIFIED') {
         setUnverifiedEmail(formData.email.trim())
       }
-      setError(errorMsg)
+      showError(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -71,7 +77,7 @@ export default function LoginPage() {
           <h2 className="mt-3 text-3xl font-bold tracking-tight">Welcome back</h2>
 
           {error && (
-            <div className="mt-5 status-banner status-banner-muted">
+            <div key={`login-error-${errorNoticeId}`} className="mt-5 status-banner status-banner-muted status-banner-attention">
               {error}
             </div>
           )}

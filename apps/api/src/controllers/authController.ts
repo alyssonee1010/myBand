@@ -24,6 +24,35 @@ const VERIFICATION_EMAIL_GENERIC_MESSAGE =
 const EMAIL_ALREADY_VERIFIED_MESSAGE = 'This email is already activated. You can log in now.';
 const EMAIL_VERIFICATION_RATE_LIMIT_CODE = 'EMAIL_VERIFICATION_RATE_LIMIT';
 
+function normalizeOptionalName(name?: string | null): string | null {
+  const trimmedName = name?.trim();
+  return trimmedName ? trimmedName : null;
+}
+
+function resolveStoredName({
+  submittedName,
+  existingName,
+  email,
+}: {
+  submittedName?: string | null;
+  existingName?: string | null;
+  email: string;
+}) {
+  const normalizedSubmittedName = normalizeOptionalName(submittedName);
+
+  if (normalizedSubmittedName) {
+    return normalizedSubmittedName;
+  }
+
+  const emailPrefix = email.split('@')[0];
+
+  if (existingName && existingName !== emailPrefix) {
+    return existingName;
+  }
+
+  return null;
+}
+
 function getVerificationRetryAfterSecondsForUser(user: { emailVerificationLastSentAt?: Date | null }) {
   return getEmailVerificationRetryAfterSeconds(user.emailVerificationLastSentAt ?? null);
 }
@@ -165,7 +194,20 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       throw new ApiError(400, 'Email already registered');
     }
 
-    const { emailResult, updatedUser, retryAfterSeconds } = await trySendEmailVerificationForUser(existingUser);
+    const hashedPassword = await hashPassword(password);
+    const refreshedUser = await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        password: hashedPassword,
+        name: resolveStoredName({
+          submittedName: name,
+          existingName: existingUser.name,
+          email: normalizedEmail,
+        }),
+      },
+    });
+
+    const { emailResult, updatedUser, retryAfterSeconds } = await trySendEmailVerificationForUser(refreshedUser);
 
     res.status(200).json({
       requiresEmailVerification: true,
@@ -188,7 +230,10 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     data: {
       email: normalizedEmail,
       password: hashedPassword,
-      name: name || normalizedEmail.split('@')[0],
+      name: resolveStoredName({
+        submittedName: name,
+        email: normalizedEmail,
+      }),
       emailVerifiedAt: null,
     },
   });

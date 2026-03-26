@@ -68,6 +68,7 @@ export default function VerifyEmailPage() {
     const [email, setEmail] = useState(initialEmail);
     const [loading, setLoading] = useState(Boolean(token));
     const [resending, setResending] = useState(false);
+    const [errorNoticeId, setErrorNoticeId] = useState(0);
     const [error, setError] = useState(navigationState?.initialTone === 'error' ? navigationState.initialMessage || '' : '');
     const [success, setSuccess] = useState(() => {
         if (token) {
@@ -80,6 +81,10 @@ export default function VerifyEmailPage() {
     });
     const [previewUrl, setPreviewUrl] = useState(navigationState?.verificationPreviewUrl || '');
     const [cooldownRemaining, setCooldownRemaining] = useState(0);
+    const showError = (message) => {
+        setErrorNoticeId((current) => current + 1);
+        setError(message);
+    };
     useEffect(() => {
         const initialCooldownSeconds = navigationState?.initialCooldownSeconds || 0;
         const storedCooldown = readStoredCooldown(email);
@@ -129,7 +134,7 @@ export default function VerifyEmailPage() {
                 if (cancelled) {
                     return;
                 }
-                setError(err?.message || 'Verification failed');
+                showError(err?.message || 'Verification failed');
                 setSuccess('');
             }
             finally {
@@ -148,7 +153,7 @@ export default function VerifyEmailPage() {
         setError('');
         setPreviewUrl('');
         if (!email.trim()) {
-            setError('Enter your email address to resend the verification link.');
+            showError('Enter your email address to resend the verification link.');
             return;
         }
         setResending(true);
@@ -173,14 +178,14 @@ export default function VerifyEmailPage() {
                 setCooldownRemaining(nextCooldown);
                 persistCooldown(email.trim(), nextCooldown);
             }
-            setError(err?.message || 'Failed to resend verification email');
+            showError(err?.message || 'Failed to resend verification email');
             setSuccess('');
         }
         finally {
             setResending(false);
         }
     };
-    return (_jsx("div", { className: "app-shell flex min-h-screen items-center", children: _jsxs("main", { className: "container-app grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center", children: [_jsxs("section", { className: "glass-card", children: [_jsx("p", { className: "text-xs font-medium uppercase tracking-[0.32em] text-white/70", children: "MyBand" }), _jsxs("h1", { className: "mt-5 text-5xl font-bold tracking-tight text-white md:text-6xl", children: ["Verify your ", _jsx("span", { className: "app-brand text-orange-400", children: "email." })] }), _jsx("p", { className: "mt-5 max-w-xl text-base leading-7 text-white/[0.74]", children: "We only let verified accounts sign in. Open the link from your inbox, or request a new verification email below." })] }), _jsxs("section", { className: "card", children: [_jsx("p", { className: "section-kicker", children: "Verify Email" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Confirm your address" }), error && _jsx("div", { className: "mt-5 status-banner status-banner-muted", children: error }), success && _jsx("div", { className: "mt-5 status-banner status-banner-strong", children: success }), previewUrl && (_jsxs("div", { className: "mt-4 text-sm leading-6 text-black/60", children: ["Development preview link:", ' ', _jsx("a", { href: previewUrl, className: "font-semibold text-orange-600 underline-offset-4 hover:underline", children: "Open verification link" })] })), !loading && (_jsxs("form", { onSubmit: handleResend, className: "mt-6 space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "mb-2 block text-sm font-medium text-black/70", children: "Email" }), _jsx("input", { type: "email", value: email, onChange: (event) => setEmail(event.target.value), className: "input-field", disabled: resending, placeholder: "you@example.com" })] }), cooldownRemaining > 0 && (_jsxs("p", { className: "text-sm font-medium text-orange-700", children: ["You can request another verification email in ", cooldownRemaining, "s."] })), _jsx("button", { type: "submit", disabled: resending || cooldownRemaining > 0, className: "btn-primary w-full", children: resending
+    return (_jsx("div", { className: "app-shell flex min-h-screen items-center", children: _jsxs("main", { className: "container-app grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center", children: [_jsxs("section", { className: "glass-card", children: [_jsx("p", { className: "text-xs font-medium uppercase tracking-[0.32em] text-white/70", children: "MyBand" }), _jsxs("h1", { className: "mt-5 text-5xl font-bold tracking-tight text-white md:text-6xl", children: ["Verify your ", _jsx("span", { className: "app-brand text-orange-400", children: "email." })] }), _jsx("p", { className: "mt-5 max-w-xl text-base leading-7 text-white/[0.74]", children: "We only let verified accounts sign in. Open the link from your inbox, or request a new verification email below." })] }), _jsxs("section", { className: "card", children: [_jsx("p", { className: "section-kicker", children: "Verify Email" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Confirm your address" }), error && _jsx("div", { className: "mt-5 status-banner status-banner-muted status-banner-attention", children: error }, `verify-error-${errorNoticeId}`), success && _jsx("div", { className: "mt-5 status-banner status-banner-strong", children: success }), previewUrl && (_jsxs("div", { className: "mt-4 text-sm leading-6 text-black/60", children: ["Development preview link:", ' ', _jsx("a", { href: previewUrl, className: "font-semibold text-orange-600 underline-offset-4 hover:underline", children: "Open verification link" })] })), !loading && (_jsxs("form", { onSubmit: handleResend, className: "mt-6 space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "mb-2 block text-sm font-medium text-black/70", children: "Email" }), _jsx("input", { type: "email", value: email, onChange: (event) => setEmail(event.target.value), className: "input-field", disabled: resending, placeholder: "you@example.com" })] }), cooldownRemaining > 0 && (_jsxs("p", { className: "text-sm font-medium text-orange-700", children: ["You can request another verification email in ", cooldownRemaining, "s."] })), _jsx("button", { type: "submit", disabled: resending || cooldownRemaining > 0, className: "btn-primary w-full", children: resending
                                         ? 'Sending verification email...'
                                         : cooldownRemaining > 0
                                             ? `Resend in ${cooldownRemaining}s`
