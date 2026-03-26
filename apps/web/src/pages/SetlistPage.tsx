@@ -2,6 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DragDropContext, Draggable, Droppable, DropResult } from 'react-beautiful-dnd'
 import { contentApi, setlistApi } from '../lib/api'
+import {
+  cacheSetlistFiles,
+  clearSetlistCache,
+  getCachedContentFile,
+  getCacheableSetlistItems,
+  getSetlistCacheStatus,
+  isSetlistCacheSupported,
+  SetlistCacheStatus,
+} from '../lib/setlistCache'
 import '../styles/setlist.css'
 
 interface SetlistItem {
@@ -51,10 +60,19 @@ export default function SetlistPage() {
   const [isPerformanceMode, setIsPerformanceMode] = useState(false)
   const [addingContentIds, setAddingContentIds] = useState<string[]>([])
   const [addStatus, setAddStatus] = useState<StatusMessage | null>(null)
+  const [cacheStatus, setCacheStatus] = useState<SetlistCacheStatus | null>(null)
+  const [cacheStatusMessage, setCacheStatusMessage] = useState<StatusMessage | null>(null)
+  const [isCachingSetlist, setIsCachingSetlist] = useState(false)
 
   const touchStartX = useRef<number | null>(null)
   const performanceModeRef = useRef<HTMLDivElement | null>(null)
   const addingContentIdsRef = useRef(new Set<string>())
+  const isCacheSupported = isSetlistCacheSupported()
+  const cacheableContentIds = setlist
+    ? getCacheableSetlistItems(setlist.items).map((item) => item.content.id)
+    : []
+  const cacheableItemCount = cacheableContentIds.length
+  const cacheableContentIdsKey = cacheableContentIds.join('|')
 
   useEffect(() => {
     if (groupId && setlistId) {
@@ -102,7 +120,10 @@ export default function SetlistPage() {
       setIsActiveFileLoading(true)
 
       try {
-        const blob = await contentApi.getContentFile(groupId, activeItem.content.id)
+        const cachedBlob = await getCachedContentFile(groupId, activeItem.content.id)
+        if (isCancelled) return
+
+        const blob = cachedBlob ?? await contentApi.getContentFile(groupId, activeItem.content.id)
         if (isCancelled) return
 
         const nextFileUrl = URL.createObjectURL(blob)
@@ -134,6 +155,29 @@ export default function SetlistPage() {
       isCancelled = true
     }
   }, [groupId, activeItem?.content.id, activeItem?.content.fileUrl])
+
+  useEffect(() => {
+    if (!groupId || !setlistId || !setlist) {
+      setCacheStatus(null)
+      return
+    }
+
+    let isCancelled = false
+
+    const loadCacheStatus = async () => {
+      const nextCacheStatus = await getSetlistCacheStatus(groupId, setlistId, cacheableContentIds)
+
+      if (!isCancelled) {
+        setCacheStatus(nextCacheStatus)
+      }
+    }
+
+    void loadCacheStatus()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [groupId, setlistId, setlist, cacheableContentIdsKey])
 
   useEffect(() => {
     return () => {
@@ -271,6 +315,29 @@ export default function SetlistPage() {
     }
   }
 
+  const saveReorderedItems = async (items: SetlistItem[]) => {
+    if (!groupId || !setlistId || !setlist) {
+      return
+    }
+
+    setSetlist({
+      ...setlist,
+      items,
+    })
+
+    try {
+      const itemsToSend = items.map((item, index) => ({
+        itemId: item.id,
+        position: index,
+      }))
+      const updatedSetlist = await setlistApi.reorderSetlistItems(groupId, setlistId, itemsToSend)
+      setSetlist(updatedSetlist)
+    } catch (err) {
+      alert('Failed to reorder items')
+      await loadSetlist()
+    }
+  }
+
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination } = result
 
@@ -287,22 +354,7 @@ export default function SetlistPage() {
       position: index,
     }))
 
-    setSetlist({
-      ...setlist,
-      items,
-    })
-
-    try {
-      const itemsToSend = items.map((item, index) => ({
-        itemId: item.id,
-        position: index,
-      }))
-      const updatedSetlist = await setlistApi.reorderSetlistItems(groupId!, setlistId!, itemsToSend)
-      setSetlist(updatedSetlist)
-    } catch (err) {
-      alert('Failed to reorder items')
-      await loadSetlist()
-    }
+    await saveReorderedItems(items)
   }
 
   const handleAddContent = async (content: AvailableContent) => {
@@ -374,6 +426,77 @@ export default function SetlistPage() {
       await loadSetlist()
     } catch (err) {
       alert('Failed to remove item')
+    }
+  }
+
+  const handleCacheSetlist = async () => {
+    if (!groupId || !setlistId || !setlist) {
+      return
+    }
+
+    if (!isCacheSupported) {
+      setCacheStatusMessage({
+        tone: 'error',
+        text: 'Caching is not available on this device.',
+      })
+      return
+    }
+
+    if (cacheableItemCount === 0) {
+      setCacheStatusMessage({
+        tone: 'info',
+        text: 'This setlist only has text songs. There are no files to cache.',
+      })
+      return
+    }
+
+    setIsCachingSetlist(true)
+    setCacheStatusMessage(null)
+
+    try {
+      if (cacheStatus?.isFullyCached) {
+        await clearSetlistCache(groupId, setlistId, cacheableContentIds)
+        setCacheStatus({
+          supported: true,
+          totalCount: cacheableItemCount,
+          cachedCount: 0,
+          isFullyCached: false,
+          cachedAt: null,
+        })
+        setCacheStatusMessage({
+          tone: 'success',
+          text: 'Cached files were cleared for this setlist.',
+        })
+        return
+      }
+
+      await cacheSetlistFiles(
+        groupId,
+        setlistId,
+        setlist.items,
+        contentApi.getContentFile,
+        ({ completed, total, title }) => {
+          setCacheStatusMessage({
+            tone: 'info',
+            text: `Caching ${completed} of ${total}: "${title}"`,
+          })
+        }
+      )
+
+      const nextCacheStatus = await getSetlistCacheStatus(groupId, setlistId, cacheableContentIds)
+      setCacheStatus(nextCacheStatus)
+      setCacheStatusMessage({
+        tone: 'success',
+        text: `Cached ${nextCacheStatus.cachedCount} files for faster performance mode.`,
+      })
+    } catch (error) {
+      const apiError = error as Error
+      setCacheStatusMessage({
+        tone: 'error',
+        text: apiError.message || 'Failed to cache this setlist',
+      })
+    } finally {
+      setIsCachingSetlist(false)
     }
   }
 
@@ -492,7 +615,62 @@ export default function SetlistPage() {
         </div>
       </header>
 
-      <main className="container-app">
+      <main className="container-app space-y-6">
+        {(cacheStatusMessage || cacheStatus) && (
+          <div className="card">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="section-kicker">Offline Prep</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight">Setlist Cache</h2>
+                <p className="mt-2 text-sm leading-6 text-black/60">
+                  Preload PDFs and images so performance mode can open them faster on this device.
+                </p>
+                {cacheStatus && !cacheStatus.supported && (
+                  <p className="mt-2 text-sm text-black/60">
+                    This browser does not expose the local cache storage API, so manual caching is unavailable here.
+                  </p>
+                )}
+                {cacheStatus && (
+                  <p className="mt-2 text-sm text-black/60">
+                    {cacheStatus.cachedCount} of {cacheStatus.totalCount} file
+                    {cacheStatus.totalCount === 1 ? '' : 's'} cached
+                    {cacheStatus.cachedAt ? ` · last updated ${new Date(cacheStatus.cachedAt).toLocaleString()}` : ''}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void handleCacheSetlist()}
+                className={cacheStatus?.isFullyCached ? 'btn-secondary' : 'btn-primary'}
+                disabled={isCachingSetlist || !isCacheSupported || cacheableItemCount === 0}
+              >
+                {isCachingSetlist
+                  ? 'Caching...'
+                  : !isCacheSupported
+                    ? 'Caching Unavailable'
+                    : cacheableItemCount === 0
+                      ? 'No Files to Cache'
+                      : cacheStatus?.isFullyCached
+                        ? 'Clear Cache'
+                        : 'Cache Setlist'}
+              </button>
+            </div>
+
+            {cacheStatusMessage && (
+              <div
+                className={`mt-5 status-banner ${
+                  cacheStatusMessage.tone === 'success'
+                    ? 'status-banner-strong'
+                    : 'status-banner-muted'
+                }`}
+              >
+                {cacheStatusMessage.text}
+              </div>
+            )}
+          </div>
+        )}
+
         {setlist && setlist.items.length === 0 ? (
           <div className="card py-16 text-center">
             <p className="text-2xl font-semibold tracking-tight">No songs in this setlist yet</p>
@@ -570,6 +748,9 @@ export default function SetlistPage() {
                 <div>
                   <p className="section-kicker">Order</p>
                   <h2 className="mt-3 text-2xl font-bold tracking-tight">Running Order</h2>
+                  <p className="mt-2 text-sm leading-6 text-black/60">
+                    Drag songs to rearrange the playing order.
+                  </p>
                 </div>
                 <span className="stat-pill">{setlist?.items.length || 0}</span>
               </div>
