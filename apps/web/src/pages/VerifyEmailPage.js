@@ -2,6 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../lib/api';
+import { consumePostAuthRedirect } from '../lib/postAuthRedirect';
 import '../styles/auth.css';
 const EMAIL_VERIFICATION_RATE_LIMIT_CODE = 'EMAIL_VERIFICATION_RATE_LIMIT';
 const EMAIL_VERIFICATION_COOLDOWN_STORAGE_PREFIX = 'myband-email-verification-cooldown';
@@ -125,9 +126,10 @@ export default function VerifyEmailPage() {
                 if (cancelled) {
                     return;
                 }
-                setSuccess(response.message || 'Email verified. Redirecting to your dashboard...');
+                setSuccess(response.message || 'Email verified. Redirecting...');
+                const nextPath = consumePostAuthRedirect() || '/dashboard';
                 setTimeout(() => {
-                    navigate('/dashboard');
+                    navigate(nextPath);
                 }, 800);
             }
             catch (err) {

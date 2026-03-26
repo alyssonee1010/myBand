@@ -1,11 +1,14 @@
 export declare const API_ORIGIN: string;
+type ApiRequestConfig = {
+    skipAuthRedirect?: boolean;
+};
 declare const apiClient: import("axios").AxiosInstance;
 export declare const authApi: {
     register: (email: string, password: string, name?: string) => Promise<any>;
     login: (email: string, password: string) => Promise<any>;
     verifyEmail: (token: string) => Promise<any>;
     resendVerificationEmail: (email: string) => Promise<any>;
-    getProfile: () => Promise<any>;
+    getProfile: (options?: ApiRequestConfig) => Promise<any>;
     deleteAccount: (password: string) => Promise<any>;
     forgotPassword: (email: string) => Promise<any>;
     resetPassword: (token: string, password: string) => Promise<any>;
@@ -16,13 +19,21 @@ export declare const groupApi: {
     inviteMember: (groupId: string, email: string) => Promise<any>;
     removeInvitation: (groupId: string, invitationId: string) => Promise<any>;
     acceptInvitation: (groupId: string, invitationId: string) => Promise<any>;
+    getJoinLink: (groupId: string) => Promise<any>;
+    createJoinLink: (groupId: string) => Promise<any>;
+    disableJoinLink: (groupId: string) => Promise<any>;
 };
 export declare const contentApi: {
     uploadContent: (groupId: string, title: string, description: string, file: File) => Promise<any>;
     addTextContent: (groupId: string, title: string, textContent: string, contentType: string, description?: string) => Promise<any>;
     getGroupContent: (groupId: string) => Promise<any>;
     getContentFile: (groupId: string, contentId: string) => Promise<Blob>;
+    updateContentTitle: (groupId: string, contentId: string, title: string) => Promise<any>;
     deleteContent: (groupId: string, contentId: string) => Promise<any>;
+};
+export declare const joinApi: {
+    getPreview: (token: string) => Promise<any>;
+    joinGroup: (token: string) => Promise<any>;
 };
 export declare const setlistApi: {
     createSetlist: (groupId: string, name: string) => Promise<any>;

@@ -33,6 +33,7 @@ model User {
   contents           Content[]
   sentInvitations    GroupInvitation[] @relation("SentGroupInvitations")
   receivedInvitations GroupInvitation[] @relation("ReceivedGroupInvitations")
+  createdGroupJoinLinks GroupJoinLink[]
 
   @@index([email])
 }
@@ -53,6 +54,7 @@ model Group {
   contents     Content[]
   setlists     Setlist[]
   invitations  GroupInvitation[]
+  joinLink     GroupJoinLink?
 
   @@index([createdAt])
 }
@@ -95,6 +97,22 @@ model GroupInvitation {
   @@index([groupId])
   @@index([inviteeId])
   @@index([status])
+}
+
+model GroupJoinLink {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  groupId     String   @unique
+  createdById String?
+  isActive    Boolean  @default(true)
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
 }
 
 // ============================================================================

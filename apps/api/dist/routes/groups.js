@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createGroup, getUserGroups, getGroup, inviteMemberToGroup, revokeGroupInvitation, acceptGroupInvitation, } from '../controllers/groupController.js';
+import { createGroup, getUserGroups, getGroup, inviteMemberToGroup, revokeGroupInvitation, acceptGroupInvitation, getGroupJoinLink, createOrRegenerateGroupJoinLink, disableGroupJoinLink, } from '../controllers/groupController.js';
 import { asyncHandler } from '../utils/errors.js';
 import { authMiddleware } from '../middleware/auth.js';
 const router = Router();
@@ -37,5 +37,20 @@ router.delete('/:groupId/invitations/:invitationId', asyncHandler(revokeGroupInv
  * @desc Accept a pending invitation and join the group
  */
 router.post('/:groupId/invitations/:invitationId/accept', asyncHandler(acceptGroupInvitation));
+/**
+ * @route GET /api/groups/:groupId/join-link
+ * @desc Get the active reusable join link for a group
+ */
+router.get('/:groupId/join-link', asyncHandler(getGroupJoinLink));
+/**
+ * @route POST /api/groups/:groupId/join-link
+ * @desc Create or regenerate the reusable join link for a group
+ */
+router.post('/:groupId/join-link', asyncHandler(createOrRegenerateGroupJoinLink));
+/**
+ * @route DELETE /api/groups/:groupId/join-link
+ * @desc Disable the reusable join link for a group
+ */
+router.delete('/:groupId/join-link', asyncHandler(disableGroupJoinLink));
 export default router;
 //# sourceMappingURL=groups.js.map

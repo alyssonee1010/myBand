@@ -44,11 +44,12 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use((response) => response, async (error) => {
     const status = error.response?.status;
     const data = error.response?.data;
+    const skipAuthRedirect = Boolean(error.config?.skipAuthRedirect);
     // Extract error message from backend response
     const message = data?.error || data?.message || error.message || 'API Error';
     // Only redirect to login for 401 on protected routes (not during auth)
     // Don't redirect if we're on login/register pages
-    if (status === 401 && !isAuthRoute()) {
+    if (status === 401 && !isAuthRoute() && !skipAuthRedirect) {
         await clearToken();
         window.location.href = getLoginPath();
     }
@@ -86,8 +87,8 @@ export const authApi = {
         const { data } = await apiClient.post('/auth/resend-verification', { email });
         return data;
     },
-    getProfile: async () => {
-        const { data } = await apiClient.get('/auth/me');
+    getProfile: async (options) => {
+        const { data } = await apiClient.get('/auth/me', options);
         return data;
     },
     deleteAccount: async (password) => {
@@ -130,6 +131,18 @@ export const groupApi = {
         const { data } = await apiClient.post(`/groups/${groupId}/invitations/${invitationId}/accept`);
         return data;
     },
+    getJoinLink: async (groupId) => {
+        const { data } = await apiClient.get(`/groups/${groupId}/join-link`);
+        return data.joinLink ?? null;
+    },
+    createJoinLink: async (groupId) => {
+        const { data } = await apiClient.post(`/groups/${groupId}/join-link`);
+        return data.joinLink ?? null;
+    },
+    disableJoinLink: async (groupId) => {
+        const { data } = await apiClient.delete(`/groups/${groupId}/join-link`);
+        return data;
+    },
 };
 // Content API
 export const contentApi = {
@@ -162,8 +175,24 @@ export const contentApi = {
         });
         return data;
     },
+    updateContentTitle: async (groupId, contentId, title) => {
+        const { data } = await apiClient.patch(`/groups/${groupId}/content/${contentId}`, {
+            title,
+        });
+        return data;
+    },
     deleteContent: async (groupId, contentId) => {
         const { data } = await apiClient.delete(`/groups/${groupId}/content/${contentId}`);
+        return data;
+    },
+};
+export const joinApi = {
+    getPreview: async (token) => {
+        const { data } = await apiClient.get(`/join/${token}`);
+        return data;
+    },
+    joinGroup: async (token) => {
+        const { data } = await apiClient.post(`/join/${token}/join`);
         return data;
     },
 };

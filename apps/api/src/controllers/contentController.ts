@@ -7,6 +7,11 @@ import { ensureUploadDirExists } from '../utils/uploads.js';
 
 const prisma = new PrismaClient();
 const UPLOAD_DIR = ensureUploadDirExists();
+const contentCreatorSelection = {
+  id: true,
+  email: true,
+  name: true,
+};
 
 const getMimeType = (contentType: string, fileName?: string | null) => {
   const ext = path.extname(fileName || '').toLowerCase();
@@ -148,7 +153,7 @@ export const getGroupContent = asyncHandler(async (req: Request, res: Response) 
     where: { groupId },
     include: {
       createdBy: {
-        select: { id: true, email: true, name: true },
+        select: contentCreatorSelection,
       },
     },
   });
@@ -192,6 +197,51 @@ export const getContentFile = asyncHandler(async (req: Request, res: Response) =
   res.setHeader('Content-Type', getMimeType(content.contentType, content.fileName));
   res.setHeader('Content-Disposition', `inline; filename="${content.fileName || 'content'}"`);
   res.sendFile(filePath);
+});
+
+/**
+ * Update the visible title of an existing content item
+ */
+export const updateContent = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.userId;
+  const { groupId, contentId } = req.params;
+  const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+
+  if (!userId) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId, groupId } },
+  });
+
+  if (!membership) {
+    throw new ApiError(403, 'You are not a member of this group');
+  }
+
+  if (!title) {
+    throw new ApiError(400, 'Title is required');
+  }
+
+  const content = await prisma.content.findUnique({
+    where: { id: contentId },
+  });
+
+  if (!content || content.groupId !== groupId) {
+    throw new ApiError(404, 'Content not found');
+  }
+
+  const updatedContent = await prisma.content.update({
+    where: { id: contentId },
+    data: { title },
+    include: {
+      createdBy: {
+        select: contentCreatorSelection,
+      },
+    },
+  });
+
+  res.json(updatedContent);
 });
 
 /**

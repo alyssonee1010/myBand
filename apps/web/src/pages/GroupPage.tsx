@@ -29,6 +29,15 @@ interface GroupInvitation {
   invitee?: User | null
 }
 
+interface GroupJoinLink {
+  id: string
+  token: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  createdBy?: User | null
+}
+
 interface Group {
   id: string
   name: string
@@ -42,12 +51,21 @@ interface Content {
   title: string
   contentType: string
   description?: string
-  createdBy: any
+  createdBy: {
+    id: string
+    email: string
+    name?: string
+  }
 }
 
 interface StatusMessage {
   tone: 'success' | 'error'
   text: string
+}
+
+function buildJoinLinkUrl(token: string) {
+  const joinPath = window.location.hash.startsWith('#/') ? `/#/join/${token}` : `/join/${token}`
+  return new URL(joinPath, window.location.origin).toString()
 }
 
 export default function GroupPage() {
@@ -57,11 +75,15 @@ export default function GroupPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [group, setGroup] = useState<Group | null>(null)
   const [contents, setContents] = useState<Content[]>([])
+  const [joinLink, setJoinLink] = useState<GroupJoinLink | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [joinLinkLoading, setJoinLinkLoading] = useState(false)
+  const [joinLinkAction, setJoinLinkAction] = useState<'create' | 'copy' | 'disable' | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteStatus, setInviteStatus] = useState<StatusMessage | null>(null)
+  const [joinLinkStatus, setJoinLinkStatus] = useState<StatusMessage | null>(null)
   const [pendingInvitationStatus, setPendingInvitationStatus] = useState<StatusMessage | null>(null)
   const [removingInvitationId, setRemovingInvitationId] = useState<string | null>(null)
 
@@ -72,20 +94,50 @@ export default function GroupPage() {
   }, [groupId])
 
   const loadGroup = async (showPageLoader = false) => {
+    if (!groupId) {
+      return
+    }
+
     if (showPageLoader) {
       setLoading(true)
     }
 
     try {
       const [groupData, contentsData, profileData] = await Promise.all([
-        groupApi.getGroup(groupId!),
-        contentApi.getGroupContent(groupId!),
+        groupApi.getGroup(groupId),
+        contentApi.getGroupContent(groupId),
         authApi.getProfile(),
       ])
 
       setCurrentUser(profileData.user)
       setGroup(groupData)
       setContents(contentsData.contents)
+
+      const currentMembership = groupData.members.find(
+        (member: GroupMember) => member.user.id === profileData.user.id
+      )
+
+      if (currentMembership?.role === 'admin') {
+        setJoinLinkLoading(true)
+
+        try {
+          const activeJoinLink = await groupApi.getJoinLink(groupId)
+          setJoinLink(activeJoinLink)
+          setJoinLinkStatus(null)
+        } catch {
+          setJoinLink(null)
+          setJoinLinkStatus({
+            tone: 'error',
+            text: 'Failed to load the band link controls.',
+          })
+        } finally {
+          setJoinLinkLoading(false)
+        }
+      } else {
+        setJoinLink(null)
+        setJoinLinkLoading(false)
+        setJoinLinkStatus(null)
+      }
     } catch (err) {
       alert('Failed to load group')
       navigate('/dashboard')
@@ -104,6 +156,22 @@ export default function GroupPage() {
     } catch (err) {
       alert('Failed to upload content')
     }
+  }
+
+  const handleRenameContent = async (contentId: string, title: string) => {
+    const updatedContent = await contentApi.updateContentTitle(groupId!, contentId, title)
+
+    setContents((currentContents) =>
+      currentContents.map((content) =>
+        content.id === contentId
+          ? {
+              ...content,
+              ...updatedContent,
+              createdBy: updatedContent.createdBy || content.createdBy,
+            }
+          : content
+      )
+    )
   }
 
   const handleDeleteContent = async (contentId: string) => {
@@ -175,6 +243,101 @@ export default function GroupPage() {
     }
   }
 
+  const handleCreateOrRegenerateJoinLink = async () => {
+    if (!groupId) {
+      return
+    }
+
+    if (
+      joinLink &&
+      !confirm('Regenerate the current band link? Anyone with the old link will lose access.')
+    ) {
+      return
+    }
+
+    setJoinLinkAction('create')
+    setJoinLinkStatus(null)
+
+    try {
+      const nextJoinLink = await groupApi.createJoinLink(groupId)
+      setJoinLink(nextJoinLink)
+      setJoinLinkStatus({
+        tone: 'success',
+        text: joinLink
+          ? 'Band link refreshed. Older links no longer work.'
+          : 'Band link created. You can share it now.',
+      })
+    } catch (error) {
+      const apiError = error as Error & { status?: number }
+      setJoinLinkStatus({
+        tone: 'error',
+        text:
+          apiError.status === 403
+            ? 'Only band admins can manage the band link.'
+            : apiError.message || 'Failed to create the band link.',
+      })
+    } finally {
+      setJoinLinkAction(null)
+    }
+  }
+
+  const handleCopyJoinLink = async () => {
+    if (!joinLink) {
+      return
+    }
+
+    setJoinLinkAction('copy')
+    setJoinLinkStatus(null)
+
+    try {
+      await navigator.clipboard.writeText(buildJoinLinkUrl(joinLink.token))
+      setJoinLinkStatus({
+        tone: 'success',
+        text: 'Band link copied to your clipboard.',
+      })
+    } catch {
+      setJoinLinkStatus({
+        tone: 'error',
+        text: 'Copy failed on this device. You can still copy the link manually from the field below.',
+      })
+    } finally {
+      setJoinLinkAction(null)
+    }
+  }
+
+  const handleDisableJoinLink = async () => {
+    if (!groupId) {
+      return
+    }
+
+    if (!confirm('Disable the current band link? Anyone using it will stop being able to join.')) {
+      return
+    }
+
+    setJoinLinkAction('disable')
+    setJoinLinkStatus(null)
+
+    try {
+      await groupApi.disableJoinLink(groupId)
+      setJoinLink(null)
+      setJoinLinkStatus({
+        tone: 'success',
+        text: 'Band link disabled.',
+      })
+    } catch (error) {
+      const apiError = error as Error & { status?: number }
+      setJoinLinkStatus({
+        tone: 'error',
+        text:
+          apiError.status === 403
+            ? 'Only band admins can manage the band link.'
+            : apiError.message || 'Failed to disable the band link.',
+      })
+    } finally {
+      setJoinLinkAction(null)
+    }
+  }
+
   const handleRemoveInvitation = async (invitation: GroupInvitation) => {
     if (!groupId) {
       return
@@ -225,17 +388,6 @@ export default function GroupPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="app-shell flex min-h-screen items-center justify-center px-4">
-        <div className="card max-w-sm text-center">
-          <p className="section-kicker">Loading</p>
-          <p className="mt-3 text-xl font-semibold tracking-tight">Setting up your band workspace...</p>
-        </div>
-      </div>
-    )
-  }
-
   const currentMembership = group?.members.find((member) => member.user.id === currentUser?.id)
   const canInviteMembers = currentMembership?.role === 'admin'
   const sortedMembers = [...(group?.members || [])].sort((leftMember, rightMember) => {
@@ -248,6 +400,18 @@ export default function GroupPage() {
     return leftLabel.localeCompare(rightLabel)
   })
   const pendingInvitations = group?.invitations || []
+  const shareableJoinLink = joinLink ? buildJoinLinkUrl(joinLink.token) : ''
+
+  if (loading) {
+    return (
+      <div className="app-shell flex min-h-screen items-center justify-center px-4">
+        <div className="card max-w-sm text-center">
+          <p className="section-kicker">Loading</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight">Setting up your band workspace...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app-shell">
@@ -329,6 +493,7 @@ export default function GroupPage() {
                 <ContentList
                   contents={contents}
                   onDelete={handleDeleteContent}
+                  onRename={handleRenameContent}
                 />
               )}
             </div>
@@ -381,6 +546,88 @@ export default function GroupPage() {
                 })}
               </div>
             </section>
+
+            {canInviteMembers && (
+              <section className="card">
+                <p className="section-kicker">Band Link</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight">Reusable Join Link</h2>
+                <p className="mt-2 text-sm leading-6 text-black/60">
+                  Share one link that lets anyone sign up, log in, and join this band from a
+                  confirmation screen.
+                </p>
+
+                {joinLinkStatus && (
+                  <div
+                    className={`mt-5 status-banner ${
+                      joinLinkStatus.tone === 'success'
+                        ? 'status-banner-strong'
+                        : 'status-banner-muted'
+                    }`}
+                  >
+                    {joinLinkStatus.text}
+                  </div>
+                )}
+
+                {joinLinkLoading ? (
+                  <p className="mt-5 text-sm text-black/60">Loading the current band link...</p>
+                ) : joinLink ? (
+                  <div className="mt-5 space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-black/70">
+                        Shareable link
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={shareableJoinLink}
+                        className="input-field"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyJoinLink()}
+                        className="btn-primary"
+                        disabled={joinLinkAction !== null}
+                      >
+                        {joinLinkAction === 'copy' ? 'Copying...' : 'Copy Link'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleCreateOrRegenerateJoinLink()}
+                        className="btn-secondary"
+                        disabled={joinLinkAction !== null}
+                      >
+                        {joinLinkAction === 'create' ? 'Refreshing...' : 'Regenerate'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDisableJoinLink()}
+                        className="btn-danger"
+                        disabled={joinLinkAction !== null}
+                      >
+                        {joinLinkAction === 'disable' ? 'Disabling...' : 'Disable'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5 space-y-4">
+                    <p className="rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-4 py-6 text-sm text-black/60">
+                      No band link yet. Create one when you want people to join from a shareable link.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateOrRegenerateJoinLink()}
+                      className="btn-primary w-full"
+                      disabled={joinLinkAction !== null}
+                    >
+                      {joinLinkAction === 'create' ? 'Creating link...' : 'Create Band Link'}
+                    </button>
+                  </div>
+                )}
+              </section>
+            )}
 
             <section className="card">
               <p className="section-kicker">Invite</p>

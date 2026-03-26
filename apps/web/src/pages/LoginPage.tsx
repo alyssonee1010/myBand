@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../lib/api'
+import { consumePostAuthRedirect } from '../lib/postAuthRedirect'
 import '../styles/auth.css'
 
 export default function LoginPage() {
@@ -45,8 +46,9 @@ export default function LoginPage() {
       }
 
       setSuccess('Login successful. Redirecting...')
+      const nextPath = consumePostAuthRedirect() || '/dashboard'
       setTimeout(() => {
-        navigate('/dashboard')
+        navigate(nextPath)
       }, 500)
     } catch (err: any) {
       const errorMsg = err?.message || err?.toString() || 'Login failed'

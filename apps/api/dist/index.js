@@ -6,6 +6,7 @@ import { ensureUploadDirExists, uploadDir } from './utils/uploads.js';
 // Routes
 import authRoutes from './routes/auth.js';
 import groupRoutes from './routes/groups.js';
+import joinRoutes from './routes/join.js';
 import contentRoutes from './routes/content.js';
 import setlistRoutes from './routes/setlists.js';
 const app = express();
@@ -30,6 +31,7 @@ if (shouldExposeUploadsPublicly) {
 // ============================================================================
 // Public routes (no auth required)
 app.use('/api/auth', authRoutes);
+app.use('/api/join', joinRoutes);
 // Protected routes (auth required)
 app.use('/api/groups', authMiddleware, groupRoutes);
 app.use('/api/groups/:groupId/content', authMiddleware, contentRoutes);

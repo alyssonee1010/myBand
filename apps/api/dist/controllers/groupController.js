@@ -1,11 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 import { ApiError, asyncHandler } from '../utils/errors.js';
 import { normalizeEmail } from '../utils/email.js';
+import { generateJoinLinkToken } from '../utils/crypto.js';
 const prisma = new PrismaClient();
 const userSelection = {
     id: true,
     email: true,
     name: true,
+};
+const joinLinkInclude = {
+    createdBy: {
+        select: userSelection,
+    },
 };
 /**
  * Create a new group (band)
@@ -351,5 +357,110 @@ export const acceptGroupInvitation = asyncHandler(async (req, res) => {
         };
     });
     res.json(result);
+});
+/**
+ * Get the active reusable join link for a group
+ */
+export const getGroupJoinLink = asyncHandler(async (req, res) => {
+    const userId = req.userId;
+    const { groupId } = req.params;
+    if (!userId) {
+        throw new ApiError(401, 'Unauthorized');
+    }
+    const adminMembership = await prisma.groupMember.findUnique({
+        where: { userId_groupId: { userId, groupId } },
+    });
+    if (!adminMembership || adminMembership.role !== 'admin') {
+        throw new ApiError(403, 'Only admins can manage the band link');
+    }
+    const joinLink = await prisma.groupJoinLink.findFirst({
+        where: {
+            groupId,
+            isActive: true,
+        },
+        include: joinLinkInclude,
+    });
+    res.json({
+        joinLink,
+    });
+});
+/**
+ * Create or regenerate the reusable join link for a group
+ */
+export const createOrRegenerateGroupJoinLink = asyncHandler(async (req, res) => {
+    const userId = req.userId;
+    const { groupId } = req.params;
+    if (!userId) {
+        throw new ApiError(401, 'Unauthorized');
+    }
+    const adminMembership = await prisma.groupMember.findUnique({
+        where: { userId_groupId: { userId, groupId } },
+    });
+    if (!adminMembership || adminMembership.role !== 'admin') {
+        throw new ApiError(403, 'Only admins can manage the band link');
+    }
+    const token = generateJoinLinkToken();
+    const existingJoinLink = await prisma.groupJoinLink.findUnique({
+        where: { groupId },
+    });
+    const joinLink = existingJoinLink
+        ? await prisma.groupJoinLink.update({
+            where: { groupId },
+            data: {
+                token,
+                createdById: userId,
+                isActive: true,
+                revokedAt: null,
+            },
+            include: joinLinkInclude,
+        })
+        : await prisma.groupJoinLink.create({
+            data: {
+                groupId,
+                token,
+                createdById: userId,
+            },
+            include: joinLinkInclude,
+        });
+    res.status(existingJoinLink ? 200 : 201).json({
+        joinLink,
+    });
+});
+/**
+ * Disable the active reusable join link for a group
+ */
+export const disableGroupJoinLink = asyncHandler(async (req, res) => {
+    const userId = req.userId;
+    const { groupId } = req.params;
+    if (!userId) {
+        throw new ApiError(401, 'Unauthorized');
+    }
+    const adminMembership = await prisma.groupMember.findUnique({
+        where: { userId_groupId: { userId, groupId } },
+    });
+    if (!adminMembership || adminMembership.role !== 'admin') {
+        throw new ApiError(403, 'Only admins can manage the band link');
+    }
+    const existingJoinLink = await prisma.groupJoinLink.findUnique({
+        where: { groupId },
+    });
+    if (!existingJoinLink || !existingJoinLink.isActive) {
+        res.json({
+            joinLink: null,
+            message: 'Band link is already disabled',
+        });
+        return;
+    }
+    await prisma.groupJoinLink.update({
+        where: { groupId },
+        data: {
+            isActive: false,
+            revokedAt: new Date(),
+        },
+    });
+    res.json({
+        joinLink: null,
+        message: 'Band link disabled',
+    });
 });
 //# sourceMappingURL=groupController.js.map

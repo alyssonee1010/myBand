@@ -2,6 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../lib/api';
+import { consumePostAuthRedirect } from '../lib/postAuthRedirect';
 import '../styles/auth.css';
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -38,8 +39,9 @@ export default function LoginPage() {
                 throw new Error('No token received from server');
             }
             setSuccess('Login successful. Redirecting...');
+            const nextPath = consumePostAuthRedirect() || '/dashboard';
             setTimeout(() => {
-                navigate('/dashboard');
+                navigate(nextPath);
             }, 500);
         }
         catch (err) {

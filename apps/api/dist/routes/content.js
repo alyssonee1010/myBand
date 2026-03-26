@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { uploadContent, addTextContent, getGroupContent, getContentFile, deleteContent, } from '../controllers/contentController.js';
+import { uploadContent, addTextContent, getGroupContent, getContentFile, updateContent, deleteContent, } from '../controllers/contentController.js';
 import { asyncHandler } from '../utils/errors.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { ensureUploadDirExists } from '../utils/uploads.js';
@@ -47,6 +47,12 @@ router.get('/', asyncHandler(getGroupContent));
  * @desc Stream a file for inline viewing
  */
 router.get('/:contentId/file', asyncHandler(getContentFile));
+/**
+ * @route PATCH /api/groups/:groupId/content/:contentId
+ * @desc Update content metadata
+ * @body { title }
+ */
+router.patch('/:contentId', asyncHandler(updateContent));
 /**
  * @route DELETE /api/groups/:groupId/content/:contentId
  * @desc Delete content

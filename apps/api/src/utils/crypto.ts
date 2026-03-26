@@ -1,4 +1,5 @@
 import bcryptjs from 'bcryptjs';
+import { randomBytes } from 'crypto';
 
 const SALT_ROUNDS = 10;
 
@@ -14,4 +15,11 @@ export async function hashPassword(password: string): Promise<string> {
  */
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
   return bcryptjs.compare(password, hash);
+}
+
+/**
+ * Generate a secure token for shareable group join links
+ */
+export function generateJoinLinkToken(): string {
+  return randomBytes(32).toString('hex');
 }
