@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ApiError, asyncHandler } from '../utils/errors.js';
 
 const prisma = new PrismaClient();
@@ -171,6 +171,17 @@ export const addItemToSetlist = asyncHandler(async (req: Request, res: Response)
     throw new ApiError(404, 'Content not found or does not belong to this group');
   }
 
+  const existingItem = await prisma.setlistItem.findFirst({
+    where: {
+      setlistId,
+      contentId,
+    },
+  });
+
+  if (existingItem) {
+    throw new ApiError(409, 'This song is already in the setlist');
+  }
+
   // Get next position
   const maxPosition = await prisma.setlistItem.findFirst({
     where: { setlistId },
@@ -180,19 +191,30 @@ export const addItemToSetlist = asyncHandler(async (req: Request, res: Response)
 
   const nextPosition = (maxPosition?.position ?? -1) + 1;
 
-  // Add item
-  const item = await prisma.setlistItem.create({
-    data: {
-      setlistId,
-      contentId,
-      position: nextPosition,
-    },
-    include: {
-      content: true,
-    },
-  });
+  try {
+    // Add item
+    const item = await prisma.setlistItem.create({
+      data: {
+        setlistId,
+        contentId,
+        position: nextPosition,
+      },
+      include: {
+        content: true,
+      },
+    });
 
-  res.status(201).json(item);
+    res.status(201).json(item);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new ApiError(409, 'This song is already in the setlist');
+    }
+
+    throw error;
+  }
 });
 
 /**
@@ -229,15 +251,41 @@ export const reorderSetlistItems = asyncHandler(async (req: Request, res: Respon
     throw new ApiError(403, 'You are not a member of this group');
   }
 
-  // Update all positions in a transaction
-  const updates = items.map((item, index) =>
-    prisma.setlistItem.update({
-      where: { id: item.itemId },
-      data: { position: index },
-    })
-  );
+  const currentItems = await prisma.setlistItem.findMany({
+    where: { setlistId },
+    select: { id: true },
+  });
 
-  await prisma.$transaction(updates);
+  if (currentItems.length !== items.length) {
+    throw new ApiError(400, 'The reorder request must include every song in the setlist');
+  }
+
+  const currentItemIds = new Set(currentItems.map((item) => item.id));
+  const requestedItemIds = items.map((item) => item.itemId);
+  const requestedItemIdSet = new Set(requestedItemIds);
+
+  if (
+    requestedItemIds.length !== requestedItemIdSet.size ||
+    requestedItemIds.some((itemId) => !currentItemIds.has(itemId))
+  ) {
+    throw new ApiError(400, 'The reorder request contains invalid setlist items');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    for (const [index, item] of items.entries()) {
+      await tx.setlistItem.update({
+        where: { id: item.itemId },
+        data: { position: -(index + 1) },
+      });
+    }
+
+    for (const [index, item] of items.entries()) {
+      await tx.setlistItem.update({
+        where: { id: item.itemId },
+        data: { position: index },
+      });
+    }
+  });
 
   // Fetch updated setlist
   const updatedSetlist = await prisma.setlist.findUnique({
@@ -255,6 +303,40 @@ export const reorderSetlistItems = asyncHandler(async (req: Request, res: Respon
   });
 
   res.json(updatedSetlist);
+});
+
+/**
+ * Delete a setlist
+ */
+export const deleteSetlist = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.userId;
+  const { setlistId } = req.params;
+
+  if (!userId) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+
+  const setlist = await prisma.setlist.findUnique({
+    where: { id: setlistId },
+  });
+
+  if (!setlist) {
+    throw new ApiError(404, 'Setlist not found');
+  }
+
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId, groupId: setlist.groupId } },
+  });
+
+  if (!membership) {
+    throw new ApiError(403, 'You are not a member of this group');
+  }
+
+  await prisma.setlist.delete({
+    where: { id: setlistId },
+  });
+
+  res.json({ message: 'Setlist deleted' });
 });
 
 /**

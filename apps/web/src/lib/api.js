@@ -181,6 +181,10 @@ export const setlistApi = {
         const { data } = await apiClient.get(`/groups/${groupId}/setlists/${setlistId}`);
         return data.setlist ?? data;
     },
+    deleteSetlist: async (groupId, setlistId) => {
+        const { data } = await apiClient.delete(`/groups/${groupId}/setlists/${setlistId}`);
+        return data;
+    },
     addItemToSetlist: async (groupId, setlistId, contentId) => {
         const { data } = await apiClient.post(`/groups/${groupId}/setlists/${setlistId}/items`, { contentId });
         return data;

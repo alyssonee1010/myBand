@@ -25,21 +25,36 @@ interface Setlist {
   items: SetlistItem[]
 }
 
+interface AvailableContent {
+  id: string
+  title: string
+  contentType: string
+  description?: string
+}
+
+interface StatusMessage {
+  tone: 'success' | 'error' | 'info'
+  text: string
+}
+
 export default function SetlistPage() {
   const navigate = useNavigate()
   const { groupId, setlistId } = useParams()
 
   const [setlist, setSetlist] = useState<Setlist | null>(null)
-  const [availableContent, setAvailableContent] = useState<any[]>([])
+  const [availableContent, setAvailableContent] = useState<AvailableContent[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const [activeFileUrl, setActiveFileUrl] = useState<string | null>(null)
   const [isActiveFileLoading, setIsActiveFileLoading] = useState(false)
   const [isPerformanceMode, setIsPerformanceMode] = useState(false)
+  const [addingContentIds, setAddingContentIds] = useState<string[]>([])
+  const [addStatus, setAddStatus] = useState<StatusMessage | null>(null)
 
   const touchStartX = useRef<number | null>(null)
   const performanceModeRef = useRef<HTMLDivElement | null>(null)
+  const addingContentIdsRef = useRef(new Set<string>())
 
   useEffect(() => {
     if (groupId && setlistId) {
@@ -263,9 +278,14 @@ export default function SetlistPage() {
     if (source.index === destination.index) return
     if (!setlist) return
 
-    const items = Array.from(setlist.items)
-    const [reorderedItem] = items.splice(source.index, 1)
-    items.splice(destination.index, 0, reorderedItem)
+    const reorderedItems = Array.from(setlist.items)
+    const [reorderedItem] = reorderedItems.splice(source.index, 1)
+    reorderedItems.splice(destination.index, 0, reorderedItem)
+
+    const items = reorderedItems.map((item, index) => ({
+      ...item,
+      position: index,
+    }))
 
     setSetlist({
       ...setlist,
@@ -277,20 +297,73 @@ export default function SetlistPage() {
         itemId: item.id,
         position: index,
       }))
-      await setlistApi.reorderSetlistItems(groupId!, setlistId!, itemsToSend)
+      const updatedSetlist = await setlistApi.reorderSetlistItems(groupId!, setlistId!, itemsToSend)
+      setSetlist(updatedSetlist)
     } catch (err) {
       alert('Failed to reorder items')
       await loadSetlist()
     }
   }
 
-  const handleAddContent = async (contentId: string) => {
+  const handleAddContent = async (content: AvailableContent) => {
+    if (!groupId || !setlistId || !setlist) {
+      return
+    }
+
+    if (
+      addingContentIdsRef.current.has(content.id) ||
+      setlist.items.some((item) => item.contentId === content.id)
+    ) {
+      return
+    }
+
+    addingContentIdsRef.current.add(content.id)
+    setAddingContentIds(Array.from(addingContentIdsRef.current))
+    setAddStatus({
+      tone: 'info',
+      text: `Adding "${content.title}" in the background...`,
+    })
+
     try {
-      await setlistApi.addItemToSetlist(groupId!, setlistId!, contentId)
-      await loadSetlist()
-      setShowAddModal(false)
-    } catch (err) {
-      alert('Failed to add content')
+      const item = await setlistApi.addItemToSetlist(groupId, setlistId, content.id)
+
+      setSetlist((currentSetlist) => {
+        if (!currentSetlist) {
+          return currentSetlist
+        }
+
+        if (currentSetlist.items.some((currentItem) => currentItem.contentId === item.contentId)) {
+          return currentSetlist
+        }
+
+        return {
+          ...currentSetlist,
+          items: [...currentSetlist.items, item].sort((leftItem, rightItem) => leftItem.position - rightItem.position),
+        }
+      })
+
+      setAddStatus({
+        tone: 'success',
+        text: `"${content.title}" was added. You can keep adding more songs.`,
+      })
+    } catch (error) {
+      const apiError = error as Error & { status?: number }
+
+      if (apiError.status === 409) {
+        setAddStatus({
+          tone: 'info',
+          text: `"${content.title}" is already in this setlist.`,
+        })
+        await loadSetlist()
+      } else {
+        setAddStatus({
+          tone: 'error',
+          text: apiError.message || 'Failed to add content',
+        })
+      }
+    } finally {
+      addingContentIdsRef.current.delete(content.id)
+      setAddingContentIds(Array.from(addingContentIdsRef.current))
     }
   }
 
@@ -372,20 +445,19 @@ export default function SetlistPage() {
     )
   }
 
-  const addableContent = availableContent.filter(
-    (content) => !setlist?.items.some((item) => item.contentId === content.id)
-  )
+  const addedContentIds = new Set(setlist?.items.map((item) => item.contentId) ?? [])
+  const addedContentCount = availableContent.filter((content) => addedContentIds.has(content.id)).length
 
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="container-app">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(`/groups/${groupId}/setlists`)}
             className="app-link mb-5 inline-flex items-center gap-2"
           >
             <span aria-hidden="true">←</span>
-            <span>Back</span>
+            <span>Back to Setlists</span>
           </button>
 
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -406,7 +478,13 @@ export default function SetlistPage() {
               >
                 Performance Mode
               </button>
-              <button onClick={() => setShowAddModal(true)} className="btn-primary">
+              <button
+                onClick={() => {
+                  setAddStatus(null)
+                  setShowAddModal(true)
+                }}
+                className="btn-primary"
+              >
                 Add Song
               </button>
             </div>
@@ -422,7 +500,13 @@ export default function SetlistPage() {
               Add songs from your shared library to start building the running order.
             </p>
             <div className="mt-6 flex justify-center">
-              <button onClick={() => setShowAddModal(true)} className="btn-primary">
+              <button
+                onClick={() => {
+                  setAddStatus(null)
+                  setShowAddModal(true)
+                }}
+                className="btn-primary"
+              >
                 Add Your First Song
               </button>
             </div>
@@ -592,40 +676,79 @@ export default function SetlistPage() {
           <div className="card modal-card max-h-[32rem] max-w-2xl overflow-y-auto">
             <p className="section-kicker">Add Content</p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight">Add songs to this setlist</h2>
+            <p className="mt-2 text-sm leading-6 text-black/60">
+              Stay on this page and keep tapping songs. New additions are saved in the background.
+            </p>
 
-            {addableContent.length === 0 ? (
+            {addStatus && (
+              <div
+                className={`mt-5 status-banner ${
+                  addStatus.tone === 'success'
+                    ? 'status-banner-strong'
+                    : 'status-banner-muted'
+                }`}
+              >
+                {addStatus.text}
+              </div>
+            )}
+
+            {availableContent.length === 0 ? (
               <div className="mt-6 rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-5 py-10 text-center">
-                <p className="text-xl font-semibold tracking-tight">Everything is already in the setlist</p>
+                <p className="text-xl font-semibold tracking-tight">No songs in the band library yet</p>
                 <p className="mt-2 text-sm leading-6 text-black/60">
-                  Add more content to the band library if you need more songs here.
+                  Add more content to the band library first, then come back here to build the setlist.
                 </p>
               </div>
             ) : (
               <div className="mt-6 space-y-3">
-                {addableContent.map((content) => (
-                  <div
-                    key={content.id}
-                    className="rounded-[24px] border border-black/10 bg-white/80 p-4"
-                  >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <p className="text-lg font-semibold tracking-tight">{content.title}</p>
-                        <p className="mt-1 text-sm text-black/60">{content.contentType}</p>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-black/10 bg-white/70 px-4 py-3 text-sm text-black/60">
+                  <span>
+                    {addedContentCount} of {availableContent.length} songs already in this setlist
+                  </span>
+                  <span>{addingContentIds.length > 0 ? 'Saving changes...' : 'Ready to add more'}</span>
+                </div>
+
+                {availableContent.map((content) => {
+                  const isAlreadyAdded = addedContentIds.has(content.id)
+                  const isAdding = addingContentIds.includes(content.id)
+
+                  return (
+                    <div
+                      key={content.id}
+                      className={`rounded-[24px] border p-4 transition ${
+                        isAlreadyAdded
+                          ? 'border-teal-200 bg-teal-50/70'
+                          : 'border-black/10 bg-white/80'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <p className="text-lg font-semibold tracking-tight">{content.title}</p>
+                          <p className="mt-1 text-sm text-black/60">
+                            {content.contentType}
+                            {content.description ? ` · ${content.description}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleAddContent(content)}
+                          className={isAlreadyAdded ? 'btn-secondary' : 'btn-primary'}
+                          disabled={isAlreadyAdded || isAdding}
+                        >
+                          {isAdding ? 'Adding...' : isAlreadyAdded ? 'Already Added' : 'Add'}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => void handleAddContent(content.id)}
-                        className="btn-primary"
-                      >
-                        Add
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 
             <button
-              onClick={() => setShowAddModal(false)}
+              onClick={() => {
+                setShowAddModal(false)
+                setAddStatus(null)
+              }}
               className="btn-secondary mt-6 w-full"
             >
               Close

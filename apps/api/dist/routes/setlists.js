@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createSetlist, getGroupSetlists, getSetlist, addItemToSetlist, reorderSetlistItems, removeItemFromSetlist, } from '../controllers/setlistController.js';
+import { createSetlist, getGroupSetlists, getSetlist, addItemToSetlist, reorderSetlistItems, deleteSetlist, removeItemFromSetlist, } from '../controllers/setlistController.js';
 import { authMiddleware } from '../middleware/auth.js';
 const router = Router({ mergeParams: true }); // Allow inherited params like groupId
 // Apply auth middleware to all routes
@@ -32,6 +32,11 @@ router.post('/:setlistId/items', addItemToSetlist);
  * @body { items: [{ itemId, position }, ...] }
  */
 router.put('/:setlistId/items', reorderSetlistItems);
+/**
+ * @route DELETE /api/groups/:groupId/setlists/:setlistId
+ * @desc Delete a setlist
+ */
+router.delete('/:setlistId', deleteSetlist);
 /**
  * @route DELETE /api/groups/:groupId/setlists/:setlistId/items/:itemId
  * @desc Remove an item from a setlist

@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { groupApi, setlistApi } from '../lib/api'
 import '../styles/setlist.css'
 
@@ -15,6 +15,11 @@ interface Setlist {
   items: Array<{ id: string }>
 }
 
+interface StatusMessage {
+  tone: 'success' | 'error'
+  text: string
+}
+
 export default function SetlistsPage() {
   const navigate = useNavigate()
   const { groupId } = useParams()
@@ -24,6 +29,8 @@ export default function SetlistsPage() {
   const [newSetlistName, setNewSetlistName] = useState('')
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [deletingSetlistId, setDeletingSetlistId] = useState<string | null>(null)
+  const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null)
 
   useEffect(() => {
     if (!groupId) {
@@ -60,6 +67,7 @@ export default function SetlistsPage() {
     }
 
     setCreating(true)
+    setStatusMessage(null)
     try {
       const newSetlist = await setlistApi.createSetlist(groupId, trimmedName)
       setSetlists((currentSetlists) => [...currentSetlists, newSetlist])
@@ -69,6 +77,39 @@ export default function SetlistsPage() {
       alert('Failed to create setlist')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleDeleteSetlist = async (setlist: Setlist) => {
+    if (!groupId) {
+      return
+    }
+
+    const shouldDelete = confirm(`Delete "${setlist.name}"?`)
+    if (!shouldDelete) {
+      return
+    }
+
+    setDeletingSetlistId(setlist.id)
+    setStatusMessage(null)
+
+    try {
+      await setlistApi.deleteSetlist(groupId, setlist.id)
+      setSetlists((currentSetlists) =>
+        currentSetlists.filter((currentSetlist) => currentSetlist.id !== setlist.id)
+      )
+      setStatusMessage({
+        tone: 'success',
+        text: `"${setlist.name}" was deleted.`,
+      })
+    } catch (error) {
+      const apiError = error as Error
+      setStatusMessage({
+        tone: 'error',
+        text: apiError.message || 'Failed to delete setlist',
+      })
+    } finally {
+      setDeletingSetlistId(null)
     }
   }
 
@@ -151,6 +192,18 @@ export default function SetlistsPage() {
             <span className="soft-label">{setlists.length} total</span>
           </div>
 
+          {statusMessage && (
+            <div
+              className={`mt-5 status-banner ${
+                statusMessage.tone === 'success'
+                  ? 'status-banner-strong'
+                  : 'status-banner-muted'
+              }`}
+            >
+              {statusMessage.text}
+            </div>
+          )}
+
           {setlists.length === 0 ? (
             <div className="card mt-5 py-16 text-center">
               <p className="text-2xl font-semibold tracking-tight">No setlists yet</p>
@@ -161,25 +214,33 @@ export default function SetlistsPage() {
           ) : (
             <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-2">
               {setlists.map((setlist, index) => (
-                <Link
+                <div
                   key={setlist.id}
-                  to={`/groups/${groupId}/setlists/${setlist.id}`}
-                  className="group block"
+                  className="card h-full transition duration-200 hover:-translate-y-1 hover:border-orange-400/50"
                 >
-                  <div className="card h-full transition duration-200 group-hover:-translate-y-1 group-hover:border-orange-400/50">
-                    <p className="section-kicker">Setlist {String(index + 1).padStart(2, '0')}</p>
-                    <h3 className="mt-4 text-2xl font-bold tracking-tight">{setlist.name}</h3>
-                    <p className="mt-3 text-sm leading-6 text-black/60">
-                      {setlist.items.length} {setlist.items.length === 1 ? 'song' : 'songs'}
-                    </p>
-                    <div className="mt-8 flex items-center justify-between">
-                      <span className="stat-pill">Open</span>
-                      <span className="text-lg text-orange-600 transition group-hover:translate-x-1 group-hover:text-black">
-                        →
-                      </span>
-                    </div>
+                  <p className="section-kicker">Setlist {String(index + 1).padStart(2, '0')}</p>
+                  <h3 className="mt-4 text-2xl font-bold tracking-tight">{setlist.name}</h3>
+                  <p className="mt-3 text-sm leading-6 text-black/60">
+                    {setlist.items.length} {setlist.items.length === 1 ? 'song' : 'songs'}
+                  </p>
+                  <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/groups/${groupId}/setlists/${setlist.id}`)}
+                      className="btn-secondary"
+                    >
+                      Open
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteSetlist(setlist)}
+                      className="btn-danger"
+                      disabled={deletingSetlistId === setlist.id}
+                    >
+                      {deletingSetlistId === setlist.id ? 'Deleting...' : 'Delete Setlist'}
+                    </button>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}

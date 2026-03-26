@@ -5,6 +5,7 @@ import {
   getSetlist,
   addItemToSetlist,
   reorderSetlistItems,
+  deleteSetlist,
   removeItemFromSetlist,
 } from '../controllers/setlistController.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -46,6 +47,12 @@ router.post('/:setlistId/items', addItemToSetlist);
  * @body { items: [{ itemId, position }, ...] }
  */
 router.put('/:setlistId/items', reorderSetlistItems);
+
+/**
+ * @route DELETE /api/groups/:groupId/setlists/:setlistId
+ * @desc Delete a setlist
+ */
+router.delete('/:setlistId', deleteSetlist);
 
 /**
  * @route DELETE /api/groups/:groupId/setlists/:setlistId/items/:itemId

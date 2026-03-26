@@ -20,6 +20,10 @@ export declare const addItemToSetlist: (req: Request, res: Response, next: impor
  */
 export declare const reorderSetlistItems: (req: Request, res: Response, next: import("express").NextFunction) => void;
 /**
+ * Delete a setlist
+ */
+export declare const deleteSetlist: (req: Request, res: Response, next: import("express").NextFunction) => void;
+/**
  * Remove item from setlist
  */
 export declare const removeItemFromSetlist: (req: Request, res: Response, next: import("express").NextFunction) => void;

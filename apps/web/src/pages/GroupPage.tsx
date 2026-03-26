@@ -303,9 +303,18 @@ export default function GroupPage() {
                 </p>
               </div>
 
-              <button onClick={() => setShowUploadModal(true)} className="btn-primary">
-                Upload Content
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/groups/${groupId}/setlists`)}
+                  className="btn-secondary"
+                >
+                  View Setlists
+                </button>
+                <button onClick={() => setShowUploadModal(true)} className="btn-primary">
+                  Upload Content
+                </button>
+              </div>
             </div>
 
             <div className="card">
@@ -320,7 +329,6 @@ export default function GroupPage() {
                 <ContentList
                   contents={contents}
                   onDelete={handleDeleteContent}
-                  groupId={groupId!}
                 />
               )}
             </div>

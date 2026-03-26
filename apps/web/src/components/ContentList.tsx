@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom'
-
 interface Content {
   id: string
   title: string
@@ -14,10 +12,9 @@ interface Content {
 interface Props {
   contents: Content[]
   onDelete: (contentId: string) => Promise<void>
-  groupId: string
 }
 
-export default function ContentList({ contents, onDelete, groupId }: Props) {
+export default function ContentList({ contents, onDelete }: Props) {
   const getTypeLabel = (contentType: string) => {
     switch (contentType) {
       case 'lyrics':
@@ -63,12 +60,6 @@ export default function ContentList({ contents, onDelete, groupId }: Props) {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                to={`/groups/${groupId}/setlists`}
-                className="btn-secondary text-center"
-              >
-                View Setlists
-              </Link>
               <button
                 onClick={() => void onDelete(content.id)}
                 className="btn-danger"

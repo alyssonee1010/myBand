@@ -162,6 +162,7 @@ model SetlistItem {
   content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
 
   @@unique([setlistId, position]) // Ensure unique positions
+  @@unique([setlistId, contentId]) // Prevent the same song from being added twice
   @@index([setlistId])
   @@index([contentId])
 }
