@@ -36,13 +36,21 @@ export function getEmailVerificationRetryAfterSeconds(lastSentAt?: Date | null):
 
 function getMailConfig() {
   const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  const googleClientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
+  const googleClientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();
+  const googleRefreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN?.trim();
+  const gmailApiUser = process.env.GMAIL_API_USER?.trim() || process.env.GMAIL_APP_USER?.trim();
   const user = process.env.GMAIL_APP_USER?.trim();
   const pass = process.env.GMAIL_APP_PASSWORD?.trim();
   const configuredFrom = process.env.MAIL_FROM?.trim();
-  const from = configuredFrom || (resendApiKey ? 'MyBand <onboarding@resend.dev>' : user);
+  const from = configuredFrom || (gmailApiUser ? `MyBand <${gmailApiUser}>` : resendApiKey ? 'MyBand <onboarding@resend.dev>' : user);
 
   return {
     resendApiKey,
+    googleClientId,
+    googleClientSecret,
+    googleRefreshToken,
+    gmailApiUser,
     configuredFrom,
     user,
     pass,
@@ -106,6 +114,137 @@ function buildVerificationEmail({
       <p>This link expires in ${getVerificationTtlHours()} hours.</p>
     `,
   };
+}
+
+function encodeBase64Url(value: string): string {
+  return Buffer.from(value, 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function buildMimeMessage({
+  from,
+  to,
+  subject,
+  text,
+  html,
+}: {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}) {
+  const boundary = `myband-${crypto.randomBytes(12).toString('hex')}`;
+
+  return [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    text,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    html,
+    '',
+    `--${boundary}--`,
+    '',
+  ].join('\r\n');
+}
+
+async function fetchGoogleAccessToken({
+  clientId,
+  clientSecret,
+  refreshToken,
+}: {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+}) {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'myband-api/0.1.0',
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { access_token?: string; error?: string; error_description?: string }
+    | null;
+
+  if (!response.ok || !payload?.access_token) {
+    throw new Error(payload?.error_description || payload?.error || 'Failed to obtain Gmail API access token.');
+  }
+
+  return payload.access_token;
+}
+
+async function sendWithGmailApi({
+  accessToken,
+  from,
+  to,
+  subject,
+  text,
+  html,
+}: {
+  accessToken: string;
+  from?: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}) {
+  if (!from) {
+    throw new Error('MAIL_FROM or GMAIL_API_USER is required when using the Gmail API.');
+  }
+
+  const raw = encodeBase64Url(
+    buildMimeMessage({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    })
+  );
+
+  const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'myband-api/0.1.0',
+    },
+    body: JSON.stringify({ raw }),
+  });
+
+  if (response.ok) {
+    return;
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { error?: { message?: string; status?: string } }
+    | null;
+
+  throw new Error(payload?.error?.message || payload?.error?.status || `Gmail API request failed with status ${response.status}`);
 }
 
 async function sendWithResend({
@@ -185,7 +324,16 @@ export async function sendVerificationEmail({
   token: string;
 }): Promise<{ previewUrl?: string; delivered: boolean }> {
   const verificationUrl = buildEmailVerificationUrl(token);
-  const { resendApiKey, configuredFrom, from, user, pass } = getMailConfig();
+  const {
+    resendApiKey,
+    googleClientId,
+    googleClientSecret,
+    googleRefreshToken,
+    configuredFrom,
+    from,
+    user,
+    pass,
+  } = getMailConfig();
   const message = buildVerificationEmail({
     email,
     name,
@@ -193,6 +341,25 @@ export async function sendVerificationEmail({
   });
 
   try {
+    if (googleClientId && googleClientSecret && googleRefreshToken) {
+      const accessToken = await fetchGoogleAccessToken({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+        refreshToken: googleRefreshToken,
+      });
+
+      await sendWithGmailApi({
+        accessToken,
+        from,
+        to: email,
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+      });
+
+      return { delivered: true };
+    }
+
     if (resendApiKey) {
       if (process.env.NODE_ENV === 'production' && !configuredFrom) {
         throw new Error('MAIL_FROM is required when using Resend in production.');
