@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { authApi, contentApi, groupApi } from '../lib/api'
 import ContentList from '../components/ContentList'
+import ContentPreviewModal from '../components/ContentPreviewModal'
 import UploadContentModal from '../components/UploadContentModal'
 import '../styles/group.css'
 
@@ -51,6 +52,8 @@ interface Content {
   title: string
   contentType: string
   description?: string
+  fileUrl?: string | null
+  fileName?: string | null
   createdBy: {
     id: string
     email: string
@@ -76,6 +79,10 @@ export default function GroupPage() {
   const [group, setGroup] = useState<Group | null>(null)
   const [contents, setContents] = useState<Content[]>([])
   const [joinLink, setJoinLink] = useState<GroupJoinLink | null>(null)
+  const [previewContent, setPreviewContent] = useState<Content | null>(null)
+  const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState('')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [joinLinkLoading, setJoinLinkLoading] = useState(false)
@@ -92,6 +99,74 @@ export default function GroupPage() {
       void loadGroup(true)
     }
   }, [groupId])
+
+  useEffect(() => {
+    if (!groupId || !previewContent?.fileUrl) {
+      setPreviewLoading(false)
+      setPreviewError('')
+      setPreviewFileUrl((currentPreviewFileUrl) => {
+        if (currentPreviewFileUrl) {
+          URL.revokeObjectURL(currentPreviewFileUrl)
+        }
+
+        return null
+      })
+      return
+    }
+
+    let cancelled = false
+
+    const loadPreview = async () => {
+      setPreviewLoading(true)
+      setPreviewError('')
+
+      try {
+        const blob = await contentApi.getContentFile(groupId, previewContent.id)
+
+        if (cancelled) {
+          return
+        }
+
+        const nextPreviewFileUrl = URL.createObjectURL(blob)
+        setPreviewFileUrl((currentPreviewFileUrl) => {
+          if (currentPreviewFileUrl) {
+            URL.revokeObjectURL(currentPreviewFileUrl)
+          }
+
+          return nextPreviewFileUrl
+        })
+      } catch (error: any) {
+        if (!cancelled) {
+          setPreviewError(error?.message || 'Failed to load this preview.')
+          setPreviewFileUrl((currentPreviewFileUrl) => {
+            if (currentPreviewFileUrl) {
+              URL.revokeObjectURL(currentPreviewFileUrl)
+            }
+
+            return null
+          })
+        }
+      } finally {
+        if (!cancelled) {
+          setPreviewLoading(false)
+        }
+      }
+    }
+
+    void loadPreview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [groupId, previewContent?.fileUrl, previewContent?.id])
+
+  useEffect(() => {
+    return () => {
+      if (previewFileUrl) {
+        URL.revokeObjectURL(previewFileUrl)
+      }
+    }
+  }, [previewFileUrl])
 
   const loadGroup = async (showPageLoader = false) => {
     if (!groupId) {
@@ -182,6 +257,24 @@ export default function GroupPage() {
     } catch (err) {
       alert('Failed to delete content')
     }
+  }
+
+  const handleOpenPreview = (content: Content) => {
+    setPreviewContent(content)
+    setPreviewError('')
+  }
+
+  const handleClosePreview = () => {
+    setPreviewContent(null)
+    setPreviewLoading(false)
+    setPreviewError('')
+    setPreviewFileUrl((currentPreviewFileUrl) => {
+      if (currentPreviewFileUrl) {
+        URL.revokeObjectURL(currentPreviewFileUrl)
+      }
+
+      return null
+    })
   }
 
   const handleInviteMember = async (event: FormEvent<HTMLFormElement>) => {
@@ -494,6 +587,7 @@ export default function GroupPage() {
                   contents={contents}
                   onDelete={handleDeleteContent}
                   onRename={handleRenameContent}
+                  onPreview={handleOpenPreview}
                 />
               )}
             </div>
@@ -754,6 +848,16 @@ export default function GroupPage() {
         <UploadContentModal
           onClose={() => setShowUploadModal(false)}
           onUpload={handleUpload}
+        />
+      )}
+
+      {previewContent && (
+        <ContentPreviewModal
+          content={previewContent}
+          fileUrl={previewFileUrl}
+          loading={previewLoading}
+          error={previewError}
+          onClose={handleClosePreview}
         />
       )}
     </div>

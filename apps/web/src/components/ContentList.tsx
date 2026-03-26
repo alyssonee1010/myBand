@@ -5,6 +5,7 @@ interface Content {
   title: string
   contentType: string
   description?: string
+  fileUrl?: string | null
   createdBy: {
     id: string
     name?: string
@@ -16,9 +17,10 @@ interface Props {
   contents: Content[]
   onDelete: (contentId: string) => Promise<void>
   onRename: (contentId: string, title: string) => Promise<void>
+  onPreview: (content: Content) => void
 }
 
-export default function ContentList({ contents, onDelete, onRename }: Props) {
+export default function ContentList({ contents, onDelete, onRename, onPreview }: Props) {
   const [editingContentId, setEditingContentId] = useState<string | null>(null)
   const [draftTitle, setDraftTitle] = useState('')
   const [savingContentId, setSavingContentId] = useState<string | null>(null)
@@ -77,6 +79,8 @@ export default function ContentList({ contents, onDelete, onRename }: Props) {
       {contents.map((content, index) => {
         const isEditing = editingContentId === content.id
         const isSaving = savingContentId === content.id
+        const canPreview =
+          Boolean(content.fileUrl) && (content.contentType === 'image' || content.contentType === 'pdf')
 
         return (
           <div
@@ -110,7 +114,19 @@ export default function ContentList({ contents, onDelete, onRename }: Props) {
                     )}
                   </div>
                 ) : (
-                  <h3 className="mt-4 text-2xl font-bold tracking-tight text-black">{content.title}</h3>
+                  <div className="mt-4">
+                    {canPreview ? (
+                      <button
+                        type="button"
+                        onClick={() => onPreview(content)}
+                        className="text-left text-2xl font-bold tracking-tight text-black transition hover:text-orange-600"
+                      >
+                        {content.title}
+                      </button>
+                    ) : (
+                      <h3 className="text-2xl font-bold tracking-tight text-black">{content.title}</h3>
+                    )}
+                  </div>
                 )}
 
                 {content.description && (
@@ -124,6 +140,16 @@ export default function ContentList({ contents, onDelete, onRename }: Props) {
               </div>
 
               <div className="flex flex-wrap gap-3">
+                {canPreview && !isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => onPreview(content)}
+                    className="btn-primary"
+                  >
+                    Preview
+                  </button>
+                )}
+
                 {isEditing ? (
                   <>
                     <button

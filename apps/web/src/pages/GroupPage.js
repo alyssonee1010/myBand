@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { authApi, contentApi, groupApi } from '../lib/api';
 import ContentList from '../components/ContentList';
+import ContentPreviewModal from '../components/ContentPreviewModal';
 import UploadContentModal from '../components/UploadContentModal';
 import '../styles/group.css';
 function buildJoinLinkUrl(token) {
@@ -16,6 +17,10 @@ export default function GroupPage() {
     const [group, setGroup] = useState(null);
     const [contents, setContents] = useState([]);
     const [joinLink, setJoinLink] = useState(null);
+    const [previewContent, setPreviewContent] = useState(null);
+    const [previewFileUrl, setPreviewFileUrl] = useState(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewError, setPreviewError] = useState('');
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [joinLinkLoading, setJoinLinkLoading] = useState(false);
@@ -31,6 +36,64 @@ export default function GroupPage() {
             void loadGroup(true);
         }
     }, [groupId]);
+    useEffect(() => {
+        if (!groupId || !previewContent?.fileUrl) {
+            setPreviewLoading(false);
+            setPreviewError('');
+            setPreviewFileUrl((currentPreviewFileUrl) => {
+                if (currentPreviewFileUrl) {
+                    URL.revokeObjectURL(currentPreviewFileUrl);
+                }
+                return null;
+            });
+            return;
+        }
+        let cancelled = false;
+        const loadPreview = async () => {
+            setPreviewLoading(true);
+            setPreviewError('');
+            try {
+                const blob = await contentApi.getContentFile(groupId, previewContent.id);
+                if (cancelled) {
+                    return;
+                }
+                const nextPreviewFileUrl = URL.createObjectURL(blob);
+                setPreviewFileUrl((currentPreviewFileUrl) => {
+                    if (currentPreviewFileUrl) {
+                        URL.revokeObjectURL(currentPreviewFileUrl);
+                    }
+                    return nextPreviewFileUrl;
+                });
+            }
+            catch (error) {
+                if (!cancelled) {
+                    setPreviewError(error?.message || 'Failed to load this preview.');
+                    setPreviewFileUrl((currentPreviewFileUrl) => {
+                        if (currentPreviewFileUrl) {
+                            URL.revokeObjectURL(currentPreviewFileUrl);
+                        }
+                        return null;
+                    });
+                }
+            }
+            finally {
+                if (!cancelled) {
+                    setPreviewLoading(false);
+                }
+            }
+        };
+        void loadPreview();
+        return () => {
+            cancelled = true;
+        };
+    }, [groupId, previewContent?.fileUrl, previewContent?.id]);
+    useEffect(() => {
+        return () => {
+            if (previewFileUrl) {
+                URL.revokeObjectURL(previewFileUrl);
+            }
+        };
+    }, [previewFileUrl]);
     const loadGroup = async (showPageLoader = false) => {
         if (!groupId) {
             return;
@@ -112,6 +175,21 @@ export default function GroupPage() {
         catch (err) {
             alert('Failed to delete content');
         }
+    };
+    const handleOpenPreview = (content) => {
+        setPreviewContent(content);
+        setPreviewError('');
+    };
+    const handleClosePreview = () => {
+        setPreviewContent(null);
+        setPreviewLoading(false);
+        setPreviewError('');
+        setPreviewFileUrl((currentPreviewFileUrl) => {
+            if (currentPreviewFileUrl) {
+                URL.revokeObjectURL(currentPreviewFileUrl);
+            }
+            return null;
+        });
     };
     const handleInviteMember = async (event) => {
         event.preventDefault();
@@ -312,7 +390,7 @@ export default function GroupPage() {
     if (loading) {
         return (_jsx("div", { className: "app-shell flex min-h-screen items-center justify-center px-4", children: _jsxs("div", { className: "card max-w-sm text-center", children: [_jsx("p", { className: "section-kicker", children: "Loading" }), _jsx("p", { className: "mt-3 text-xl font-semibold tracking-tight", children: "Setting up your band workspace..." })] }) }));
     }
-    return (_jsxs("div", { className: "app-shell", children: [_jsx("header", { className: "app-header", children: _jsxs("div", { className: "container-app", children: [_jsxs("button", { onClick: () => navigate('/dashboard'), className: "app-link mb-5 inline-flex items-center gap-2", children: [_jsx("span", { "aria-hidden": "true", children: "\u2190" }), _jsx("span", { children: "Back to Bands" })] }), _jsxs("div", { className: "flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between", children: [_jsxs("div", { className: "max-w-3xl", children: [_jsx("p", { className: "section-kicker", children: "Band Workspace" }), _jsx("h1", { className: "mt-3 text-4xl font-bold tracking-tight text-black md:text-5xl", children: group?.name }), group?.description && (_jsx("p", { className: "mt-4 text-sm leading-6 text-black/60 md:text-base", children: group.description }))] }), _jsxs("div", { className: "card max-w-sm", children: [_jsx("p", { className: "section-kicker", children: "Overview" }), _jsxs("div", { className: "mt-4 grid grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-3xl font-bold tracking-tight", children: sortedMembers.length }), _jsx("p", { className: "soft-label mt-1", children: "members" })] }), _jsxs("div", { children: [_jsx("p", { className: "text-3xl font-bold tracking-tight", children: pendingInvitations.length }), _jsx("p", { className: "soft-label mt-1", children: "pending" })] })] })] })] })] }) }), _jsx("main", { className: "container-app", children: _jsxs("div", { className: "grid gap-8 xl:grid-cols-[minmax(0,2fr)_360px]", children: [_jsxs("section", { className: "space-y-6", children: [_jsxs("div", { className: "card flex flex-col gap-4 md:flex-row md:items-center md:justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "Library" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Content Library" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Keep charts, lyrics, recordings, and references in one place for everyone." })] }), _jsxs("div", { className: "flex flex-wrap gap-3", children: [_jsx("button", { type: "button", onClick: () => navigate(`/groups/${groupId}/setlists`), className: "btn-secondary", children: "View Setlists" }), _jsx("button", { onClick: () => setShowUploadModal(true), className: "btn-primary", children: "Upload Content" })] })] }), _jsx("div", { className: "card", children: contents.length === 0 ? (_jsxs("div", { className: "rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-6 py-16 text-center", children: [_jsx("p", { className: "text-xl font-semibold tracking-tight", children: "No content yet" }), _jsx("p", { className: "mt-2 text-sm text-black/60", children: "Upload something to start building your shared band library." })] })) : (_jsx(ContentList, { contents: contents, onDelete: handleDeleteContent, onRename: handleRenameContent })) })] }), _jsxs("aside", { className: "space-y-6", children: [_jsxs("section", { className: "card", children: [_jsxs("div", { className: "flex items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "People" }), _jsx("h2", { className: "mt-2 text-2xl font-bold tracking-tight", children: "Band Members" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Contact everyone in the band and keep roles visible." })] }), _jsx("span", { className: "stat-pill", children: sortedMembers.length })] }), _jsx("div", { className: "mt-5 space-y-3", children: sortedMembers.map((member) => {
+    return (_jsxs("div", { className: "app-shell", children: [_jsx("header", { className: "app-header", children: _jsxs("div", { className: "container-app", children: [_jsxs("button", { onClick: () => navigate('/dashboard'), className: "app-link mb-5 inline-flex items-center gap-2", children: [_jsx("span", { "aria-hidden": "true", children: "\u2190" }), _jsx("span", { children: "Back to Bands" })] }), _jsxs("div", { className: "flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between", children: [_jsxs("div", { className: "max-w-3xl", children: [_jsx("p", { className: "section-kicker", children: "Band Workspace" }), _jsx("h1", { className: "mt-3 text-4xl font-bold tracking-tight text-black md:text-5xl", children: group?.name }), group?.description && (_jsx("p", { className: "mt-4 text-sm leading-6 text-black/60 md:text-base", children: group.description }))] }), _jsxs("div", { className: "card max-w-sm", children: [_jsx("p", { className: "section-kicker", children: "Overview" }), _jsxs("div", { className: "mt-4 grid grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-3xl font-bold tracking-tight", children: sortedMembers.length }), _jsx("p", { className: "soft-label mt-1", children: "members" })] }), _jsxs("div", { children: [_jsx("p", { className: "text-3xl font-bold tracking-tight", children: pendingInvitations.length }), _jsx("p", { className: "soft-label mt-1", children: "pending" })] })] })] })] })] }) }), _jsx("main", { className: "container-app", children: _jsxs("div", { className: "grid gap-8 xl:grid-cols-[minmax(0,2fr)_360px]", children: [_jsxs("section", { className: "space-y-6", children: [_jsxs("div", { className: "card flex flex-col gap-4 md:flex-row md:items-center md:justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "Library" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Content Library" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Keep charts, lyrics, recordings, and references in one place for everyone." })] }), _jsxs("div", { className: "flex flex-wrap gap-3", children: [_jsx("button", { type: "button", onClick: () => navigate(`/groups/${groupId}/setlists`), className: "btn-secondary", children: "View Setlists" }), _jsx("button", { onClick: () => setShowUploadModal(true), className: "btn-primary", children: "Upload Content" })] })] }), _jsx("div", { className: "card", children: contents.length === 0 ? (_jsxs("div", { className: "rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-6 py-16 text-center", children: [_jsx("p", { className: "text-xl font-semibold tracking-tight", children: "No content yet" }), _jsx("p", { className: "mt-2 text-sm text-black/60", children: "Upload something to start building your shared band library." })] })) : (_jsx(ContentList, { contents: contents, onDelete: handleDeleteContent, onRename: handleRenameContent, onPreview: handleOpenPreview })) })] }), _jsxs("aside", { className: "space-y-6", children: [_jsxs("section", { className: "card", children: [_jsxs("div", { className: "flex items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "People" }), _jsx("h2", { className: "mt-2 text-2xl font-bold tracking-tight", children: "Band Members" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Contact everyone in the band and keep roles visible." })] }), _jsx("span", { className: "stat-pill", children: sortedMembers.length })] }), _jsx("div", { className: "mt-5 space-y-3", children: sortedMembers.map((member) => {
                                                 const label = member.user.name || member.user.email;
                                                 const isCurrentUser = member.user.id === currentUser?.id;
                                                 const initials = label.charAt(0).toUpperCase();
@@ -325,6 +403,6 @@ export default function GroupPage() {
                                                 ? 'status-banner-strong'
                                                 : 'status-banner-muted'}`, children: pendingInvitationStatus.text })), pendingInvitations.length === 0 ? (_jsx("p", { className: "mt-5 rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-4 py-6 text-sm text-black/60", children: "No pending invitations right now." })) : (_jsx("div", { className: "mt-5 space-y-3", children: pendingInvitations.map((invitation) => (_jsxs("div", { className: "rounded-[24px] border border-black/10 bg-white/80 px-4 py-4", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3", children: [_jsx("p", { className: "font-semibold text-black", children: invitation.email }), _jsx("span", { className: "rounded-full border border-orange-300/60 bg-orange-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70", children: "Pending" })] }), _jsx("p", { className: "mt-3 text-sm leading-6 text-black/60", children: invitation.invitee
                                                             ? `Waiting for ${invitation.invitee.name || invitation.invitee.email} to accept in their dashboard.`
-                                                            : 'No account found yet. They can sign up with this email and accept the invite afterward.' }), canInviteMembers && (_jsx("div", { className: "mt-4 flex justify-end", children: _jsx("button", { type: "button", onClick: () => void handleRemoveInvitation(invitation), className: "btn-danger", disabled: removingInvitationId === invitation.id, children: removingInvitationId === invitation.id ? 'Removing...' : 'Remove Request' }) }))] }, invitation.id))) }))] })] })] }) }), showUploadModal && (_jsx(UploadContentModal, { onClose: () => setShowUploadModal(false), onUpload: handleUpload }))] }));
+                                                            : 'No account found yet. They can sign up with this email and accept the invite afterward.' }), canInviteMembers && (_jsx("div", { className: "mt-4 flex justify-end", children: _jsx("button", { type: "button", onClick: () => void handleRemoveInvitation(invitation), className: "btn-danger", disabled: removingInvitationId === invitation.id, children: removingInvitationId === invitation.id ? 'Removing...' : 'Remove Request' }) }))] }, invitation.id))) }))] })] })] }) }), showUploadModal && (_jsx(UploadContentModal, { onClose: () => setShowUploadModal(false), onUpload: handleUpload })), previewContent && (_jsx(ContentPreviewModal, { content: previewContent, fileUrl: previewFileUrl, loading: previewLoading, error: previewError, onClose: handleClosePreview }))] }));
 }
 //# sourceMappingURL=GroupPage.js.map
