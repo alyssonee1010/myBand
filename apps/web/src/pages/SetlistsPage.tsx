@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import InstallAppButton from '../components/InstallAppButton'
 import { groupApi, setlistApi } from '../lib/api'
 import '../styles/setlist.css'
 
@@ -148,7 +149,10 @@ export default function SetlistsPage() {
                 </p>
               )}
             </div>
-            <span className="stat-pill">{setlists.length} total</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="stat-pill">{setlists.length} total</span>
+              <InstallAppButton label="Install MyBand" />
+            </div>
           </div>
         </div>
       </header>

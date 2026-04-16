@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DragDropContext, Draggable, Droppable, DropResult } from 'react-beautiful-dnd'
+import InstallAppButton from '../components/InstallAppButton'
 import { contentApi, setlistApi } from '../lib/api'
 import LinkifiedText from '../components/LinkifiedText'
 import {
@@ -798,6 +799,7 @@ export default function SetlistPage() {
 
             <div className="flex flex-wrap gap-3">
               <span className="stat-pill">{setlist?.items.length || 0} songs</span>
+              <InstallAppButton label="Install MyBand" />
               <button
                 type="button"
                 onClick={enterPerformanceMode}

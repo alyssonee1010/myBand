@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { authApi, contentApi, groupApi } from '../lib/api'
 import ContentList from '../components/ContentList'
 import ContentPreviewModal from '../components/ContentPreviewModal'
+import InstallAppButton from '../components/InstallAppButton'
 import UploadContentModal from '../components/UploadContentModal'
 import '../styles/group.css'
 
@@ -573,6 +574,7 @@ export default function GroupPage() {
                 >
                   View Setlists
                 </button>
+                <InstallAppButton label="Install MyBand" />
                 <button onClick={() => setShowUploadModal(true)} className="btn-primary">
                   Upload Content
                 </button>

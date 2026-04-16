@@ -14,10 +14,25 @@ interface BeforeInstallPromptEvent extends Event {
 interface InstallPromptContextValue {
   canInstall: boolean
   isInstalled: boolean
+  manualInstallHint: {
+    title: string
+    steps: string[]
+  } | null
   promptInstall: () => Promise<InstallOutcome>
 }
 
 const InstallPromptContext = createContext<InstallPromptContextValue | null>(null)
+
+function isIosBrowser() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const platform = window.navigator.platform
+  const userAgent = window.navigator.userAgent
+
+  return /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
+}
 
 function isStandaloneMode() {
   if (typeof window === 'undefined') {
@@ -31,6 +46,22 @@ function isStandaloneMode() {
     window.matchMedia('(display-mode: fullscreen)').matches ||
     Boolean(navigatorWithStandalone.standalone)
   )
+}
+
+function subscribeToMediaQuery(mediaQueryList: MediaQueryList, onChange: () => void) {
+  if (typeof mediaQueryList.addEventListener === 'function') {
+    mediaQueryList.addEventListener('change', onChange)
+
+    return () => {
+      mediaQueryList.removeEventListener('change', onChange)
+    }
+  }
+
+  mediaQueryList.addListener(onChange)
+
+  return () => {
+    mediaQueryList.removeListener(onChange)
+  }
 }
 
 export function InstallPromptProvider({ children }: { children: ReactNode }) {
@@ -60,20 +91,20 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
 
     const standaloneMediaQuery = window.matchMedia('(display-mode: standalone)')
     const fullscreenMediaQuery = window.matchMedia('(display-mode: fullscreen)')
+    const cleanupStandaloneListener = subscribeToMediaQuery(standaloneMediaQuery, syncInstalledState)
+    const cleanupFullscreenListener = subscribeToMediaQuery(fullscreenMediaQuery, syncInstalledState)
 
     syncInstalledState()
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.addEventListener('appinstalled', handleAppInstalled)
     window.addEventListener('focus', syncInstalledState)
-    standaloneMediaQuery.addEventListener('change', syncInstalledState)
-    fullscreenMediaQuery.addEventListener('change', syncInstalledState)
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
       window.removeEventListener('focus', syncInstalledState)
-      standaloneMediaQuery.removeEventListener('change', syncInstalledState)
-      fullscreenMediaQuery.removeEventListener('change', syncInstalledState)
+      cleanupStandaloneListener()
+      cleanupFullscreenListener()
     }
   }, [])
 
@@ -101,6 +132,17 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
       value={{
         canInstall: !isNativePlatform && !isInstalled && deferredPrompt !== null,
         isInstalled,
+        manualInstallHint:
+          !isNativePlatform && !isInstalled && deferredPrompt === null && isIosBrowser()
+            ? {
+                title: 'Install MyBand',
+                steps: [
+                  'Open the browser share menu on this page.',
+                  'Choose Add to Home Screen.',
+                  'Open MyBand from your home screen to use it without the browser address bar.',
+                ],
+              }
+            : null,
         promptInstall,
       }}
     >
