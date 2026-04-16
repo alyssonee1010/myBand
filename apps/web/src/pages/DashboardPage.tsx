@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { authApi, groupApi } from '../lib/api'
 import GroupList from '../components/GroupList'
 import CreateGroupModal from '../components/CreateGroupModal'
+import InstallAppButton from '../components/InstallAppButton'
 import { clearToken, getToken } from '../lib/tokenStorage'
 import '../styles/dashboard.css'
 
@@ -165,6 +166,7 @@ export default function DashboardPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <span className="stat-pill">{pendingInvitations.length} pending</span>
+            <InstallAppButton label="Install MyBand" />
             <button onClick={handleLogout} className="btn-secondary">
               Logout
             </button>

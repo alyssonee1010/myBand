@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import InstallAppButton from '../components/InstallAppButton'
 
 export default function LandingPage() {
   return (
@@ -24,6 +25,11 @@ export default function LandingPage() {
             >
               Log In
             </Link>
+            <InstallAppButton
+              className="btn-secondary border-white/20 bg-white/10 text-white hover:border-white hover:bg-white hover:text-black"
+              label="Install MyBand"
+              busyLabel="Opening Install..."
+            />
           </div>
 
           <div className="mt-12 grid gap-4 md:grid-cols-3">
