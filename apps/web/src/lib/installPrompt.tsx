@@ -137,7 +137,7 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
             ? {
                 title: 'Install MyBand',
                 steps: [
-                  'Open the browser share menu on this page.',
+                  'Open the Share menu on this page. It is the up-arrow share icon in Chrome.',
                   'Choose Add to Home Screen.',
                   'Open MyBand from your home screen to use it without the browser address bar.',
                 ],

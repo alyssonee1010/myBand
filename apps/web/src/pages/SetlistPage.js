@@ -9,36 +9,6 @@ import { cacheSetlistFiles, clearSetlistCache, getCachedContentFile, getCacheabl
 import '../styles/setlist.css';
 const MIN_SWIPE_DISTANCE_PX = 96;
 const SWIPE_DIRECTION_RATIO = 1.35;
-const PDF_MEDIA_BOX_PATTERN = /\/MediaBox\s*\[\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\]/i;
-const EMPTY_VIEWER_SIZE = {
-    width: 0,
-    height: 0,
-};
-const extractPdfPageSize = async (blob) => {
-    try {
-        const pdfText = await blob.text();
-        const mediaBoxMatch = pdfText.match(PDF_MEDIA_BOX_PATTERN);
-        if (!mediaBoxMatch) {
-            return null;
-        }
-        const left = Number.parseFloat(mediaBoxMatch[1]);
-        const bottom = Number.parseFloat(mediaBoxMatch[2]);
-        const right = Number.parseFloat(mediaBoxMatch[3]);
-        const top = Number.parseFloat(mediaBoxMatch[4]);
-        const width = Math.abs(right - left);
-        const height = Math.abs(top - bottom);
-        if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-            return null;
-        }
-        return {
-            width,
-            height,
-        };
-    }
-    catch (error) {
-        return null;
-    }
-};
 export default function SetlistPage() {
     const navigate = useNavigate();
     const { groupId, setlistId } = useParams();
@@ -48,12 +18,8 @@ export default function SetlistPage() {
     const [loading, setLoading] = useState(true);
     const [activeItemId, setActiveItemId] = useState(null);
     const [activeFileUrl, setActiveFileUrl] = useState(null);
-    const [activeFileBlob, setActiveFileBlob] = useState(null);
     const [isActiveFileLoading, setIsActiveFileLoading] = useState(false);
     const [isPerformanceMode, setIsPerformanceMode] = useState(false);
-    const [performanceViewportSize, setPerformanceViewportSize] = useState(EMPTY_VIEWER_SIZE);
-    const [performanceImageSize, setPerformanceImageSize] = useState(EMPTY_VIEWER_SIZE);
-    const [performancePdfSize, setPerformancePdfSize] = useState(null);
     const [addingContentIds, setAddingContentIds] = useState([]);
     const [addStatus, setAddStatus] = useState(null);
     const [cacheStatus, setCacheStatus] = useState(null);
@@ -66,7 +32,6 @@ export default function SetlistPage() {
         lastY: null,
         hadMultipleTouches: false,
     });
-    const performanceViewportRef = useRef(null);
     const addingContentIdsRef = useRef(new Set());
     const isCacheSupported = isSetlistCacheSupported();
     const cacheableContentIds = setlist
@@ -104,12 +69,10 @@ export default function SetlistPage() {
                 }
                 return null;
             });
-            setActiveFileBlob(null);
             setIsActiveFileLoading(false);
             return;
         }
         let isCancelled = false;
-        setActiveFileBlob(null);
         const loadActiveFile = async () => {
             setIsActiveFileLoading(true);
             try {
@@ -120,7 +83,6 @@ export default function SetlistPage() {
                 if (isCancelled)
                     return;
                 const nextFileUrl = URL.createObjectURL(blob);
-                setActiveFileBlob(blob);
                 setActiveFileUrl((currentFileUrl) => {
                     if (currentFileUrl) {
                         URL.revokeObjectURL(currentFileUrl);
@@ -130,7 +92,6 @@ export default function SetlistPage() {
             }
             catch (err) {
                 if (!isCancelled) {
-                    setActiveFileBlob(null);
                     setActiveFileUrl((currentFileUrl) => {
                         if (currentFileUrl) {
                             URL.revokeObjectURL(currentFileUrl);
@@ -150,46 +111,6 @@ export default function SetlistPage() {
             isCancelled = true;
         };
     }, [groupId, activeItem?.content.id, activeItem?.content.fileUrl]);
-    useEffect(() => {
-        if (!isPerformanceMode || !performanceViewportRef.current) {
-            setPerformanceViewportSize(EMPTY_VIEWER_SIZE);
-            return;
-        }
-        const element = performanceViewportRef.current;
-        const updateViewportSize = () => {
-            setPerformanceViewportSize({
-                width: element.clientWidth,
-                height: element.clientHeight,
-            });
-        };
-        updateViewportSize();
-        const resizeObserver = new ResizeObserver(updateViewportSize);
-        resizeObserver.observe(element);
-        return () => {
-            resizeObserver.disconnect();
-        };
-    }, [isPerformanceMode, activeItem?.content.id]);
-    useEffect(() => {
-        setPerformanceImageSize(EMPTY_VIEWER_SIZE);
-        setPerformancePdfSize(null);
-    }, [activeItem?.content.id]);
-    useEffect(() => {
-        if (!isPerformanceMode || activeItem?.content.contentType !== 'pdf' || !activeFileBlob) {
-            setPerformancePdfSize(null);
-            return;
-        }
-        let isCancelled = false;
-        const loadPdfSize = async () => {
-            const nextPdfSize = await extractPdfPageSize(activeFileBlob);
-            if (!isCancelled) {
-                setPerformancePdfSize(nextPdfSize);
-            }
-        };
-        void loadPdfSize();
-        return () => {
-            isCancelled = true;
-        };
-    }, [isPerformanceMode, activeItem?.content.contentType, activeItem?.content.id, activeFileBlob]);
     useEffect(() => {
         if (!groupId || !setlistId || !setlist) {
             setCacheStatus(null);
@@ -347,13 +268,6 @@ export default function SetlistPage() {
     };
     const handleViewerTouchCancel = () => {
         resetViewerTouchGesture();
-    };
-    const handlePerformanceImageLoad = (event) => {
-        const image = event.currentTarget;
-        setPerformanceImageSize({
-            width: image.naturalWidth,
-            height: image.naturalHeight,
-        });
     };
     const enterPerformanceMode = () => {
         setIsPerformanceMode(true);
@@ -524,31 +438,7 @@ export default function SetlistPage() {
             setIsCachingSetlist(false);
         }
     };
-    const performanceMediaNeedsTitle = (() => {
-        if (!isPerformanceMode || !activeItem) {
-            return false;
-        }
-        if (performanceViewportSize.width <= 0 || performanceViewportSize.height <= 0) {
-            return false;
-        }
-        if (activeItem.content.contentType === 'image') {
-            if (performanceImageSize.width <= 0 || performanceImageSize.height <= 0) {
-                return false;
-            }
-            return (performanceImageSize.width > performanceViewportSize.width ||
-                performanceImageSize.height > performanceViewportSize.height);
-        }
-        if (activeItem.content.contentType === 'pdf') {
-            if (!performancePdfSize) {
-                return false;
-            }
-            return (performancePdfSize.width > performanceViewportSize.width ||
-                performancePdfSize.height > performanceViewportSize.height);
-        }
-        return false;
-    })();
-    const renderActiveContent = (options) => {
-        const isPerformanceView = options?.performanceMode ?? false;
+    const renderActiveContent = (_options) => {
         if (!activeItem) {
             return (_jsx("div", { className: "setlist-viewer-empty", children: _jsx("p", { children: "Select a song from the list to start viewing it." }) }));
         }
@@ -557,7 +447,7 @@ export default function SetlistPage() {
             return (_jsx("div", { className: "setlist-viewer-empty", children: _jsx("p", { children: "Loading song..." }) }));
         }
         if (content.contentType === 'image' && activeFileUrl) {
-            return (_jsx("div", { className: "setlist-viewer-media", children: _jsx("img", { src: activeFileUrl, alt: content.title, className: "setlist-viewer-image", onLoad: isPerformanceView ? handlePerformanceImageLoad : undefined }, activeFileUrl) }));
+            return (_jsx("div", { className: "setlist-viewer-media", children: _jsx("img", { src: activeFileUrl, alt: content.title, className: "setlist-viewer-image" }, activeFileUrl) }));
         }
         if (content.contentType === 'pdf' && activeFileUrl) {
             return (_jsx("div", { className: "setlist-viewer-media", children: _jsx("object", { data: activeFileUrl, type: "application/pdf", className: "setlist-viewer-frame", children: _jsx("iframe", { src: activeFileUrl, title: content.title, className: "setlist-viewer-frame" }, activeFileUrl) }) }));
@@ -596,9 +486,7 @@ export default function SetlistPage() {
                                                                                 e.stopPropagation();
                                                                                 void handleRemoveItem(item.id);
                                                                             }, className: "btn-danger", children: "Remove" })] }) })) }, item.id));
-                                                    }), provided.placeholder] })) }) })] })] }))] }), isPerformanceMode && activeItem && (_jsxs("div", { className: "performance-mode-overlay", onTouchStart: handleViewerTouchStart, onTouchMove: handleViewerTouchMove, onTouchEnd: handleViewerTouchEnd, onTouchCancel: handleViewerTouchCancel, children: [_jsx("button", { type: "button", onClick: () => void exitPerformanceMode(), className: "performance-mode-close", "aria-label": "Close performance mode", children: _jsx("span", { "aria-hidden": "true", children: "\u00D7" }) }), _jsx("div", { ref: performanceViewportRef, className: "performance-mode-body", children: renderActiveContent({ performanceMode: true }) }), performanceMediaNeedsTitle &&
-                        (activeItem.content.contentType === 'image' ||
-                            activeItem.content.contentType === 'pdf') && (_jsx("div", { className: "performance-mode-title", children: activeItem.content.title }))] })), showAddModal && (_jsx("div", { className: "modal-overlay", children: _jsxs("div", { className: "card modal-card max-h-[32rem] max-w-2xl overflow-y-auto", children: [_jsx("p", { className: "section-kicker", children: "Add Content" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Add songs to this setlist" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Stay on this page and keep tapping songs. New additions are saved in the background." }), addStatus && (_jsx("div", { className: `mt-5 status-banner ${addStatus.tone === 'success'
+                                                    }), provided.placeholder] })) }) })] })] }))] }), isPerformanceMode && activeItem && (_jsxs("div", { className: "performance-mode-overlay", onTouchStart: handleViewerTouchStart, onTouchMove: handleViewerTouchMove, onTouchEnd: handleViewerTouchEnd, onTouchCancel: handleViewerTouchCancel, children: [_jsx("button", { type: "button", onClick: () => void exitPerformanceMode(), className: "performance-mode-close", "aria-label": "Close performance mode", children: _jsx("span", { "aria-hidden": "true", children: "\u00D7" }) }), _jsx("div", { className: "performance-mode-body", children: renderActiveContent({ performanceMode: true }) })] })), showAddModal && (_jsx("div", { className: "modal-overlay", children: _jsxs("div", { className: "card modal-card max-h-[32rem] max-w-2xl overflow-y-auto", children: [_jsx("p", { className: "section-kicker", children: "Add Content" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Add songs to this setlist" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Stay on this page and keep tapping songs. New additions are saved in the background." }), addStatus && (_jsx("div", { className: `mt-5 status-banner ${addStatus.tone === 'success'
                                 ? 'status-banner-strong'
                                 : 'status-banner-muted'}`, children: addStatus.text })), availableContent.length === 0 ? (_jsxs("div", { className: "mt-6 rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-5 py-10 text-center", children: [_jsx("p", { className: "text-xl font-semibold tracking-tight", children: "No songs in the band library yet" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Add more content to the band library first, then come back here to build the setlist." })] })) : (_jsxs("div", { className: "mt-6 space-y-3", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-black/10 bg-white/70 px-4 py-3 text-sm text-black/60", children: [_jsxs("span", { children: [addedContentCount, " of ", availableContent.length, " songs already in this setlist"] }), _jsx("span", { children: addingContentIds.length > 0 ? 'Saving changes...' : 'Ready to add more' })] }), availableContent.map((content) => {
                                     const isAlreadyAdded = addedContentIds.has(content.id);
