@@ -65,7 +65,6 @@ export default function SetlistPage() {
         lastY: null,
         hadMultipleTouches: false,
     });
-    const performanceModeRef = useRef(null);
     const performanceViewportRef = useRef(null);
     const addingContentIdsRef = useRef(new Set());
     const isCacheSupported = isSetlistCacheSupported();
@@ -234,31 +233,6 @@ export default function SetlistPage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isPerformanceMode, activeIndex, setlist]);
-    useEffect(() => {
-        if (!isPerformanceMode || !performanceModeRef.current)
-            return;
-        const element = performanceModeRef.current;
-        const handleFullscreenChange = () => {
-            if (document.fullscreenElement !== element) {
-                setIsPerformanceMode(false);
-            }
-        };
-        const requestFullscreen = async () => {
-            try {
-                if (document.fullscreenElement !== element) {
-                    await element.requestFullscreen();
-                }
-            }
-            catch (err) {
-                console.error('Fullscreen request failed', err);
-            }
-        };
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        void requestFullscreen();
-        return () => {
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
-        };
-    }, [isPerformanceMode]);
     const loadSetlist = async () => {
         try {
             const data = await setlistApi.getSetlist(groupId, setlistId);
@@ -385,14 +359,6 @@ export default function SetlistPage() {
     };
     const exitPerformanceMode = async () => {
         setIsPerformanceMode(false);
-        if (document.fullscreenElement) {
-            try {
-                await document.exitFullscreen();
-            }
-            catch (err) {
-                console.error('Fullscreen exit failed', err);
-            }
-        }
     };
     const saveReorderedItems = async (items) => {
         if (!groupId || !setlistId || !setlist) {
@@ -629,7 +595,7 @@ export default function SetlistPage() {
                                                                                 e.stopPropagation();
                                                                                 void handleRemoveItem(item.id);
                                                                             }, className: "btn-danger", children: "Remove" })] }) })) }, item.id));
-                                                    }), provided.placeholder] })) }) })] })] }))] }), isPerformanceMode && activeItem && (_jsxs("div", { ref: performanceModeRef, className: "performance-mode-overlay", onTouchStart: handleViewerTouchStart, onTouchMove: handleViewerTouchMove, onTouchEnd: handleViewerTouchEnd, onTouchCancel: handleViewerTouchCancel, children: [_jsx("button", { type: "button", onClick: () => void exitPerformanceMode(), className: "performance-mode-close", "aria-label": "Close performance mode", children: _jsx("span", { "aria-hidden": "true", children: "\u00D7" }) }), _jsx("div", { ref: performanceViewportRef, className: "performance-mode-body", children: renderActiveContent({ performanceMode: true }) }), performanceMediaNeedsTitle &&
+                                                    }), provided.placeholder] })) }) })] })] }))] }), isPerformanceMode && activeItem && (_jsxs("div", { className: "performance-mode-overlay", onTouchStart: handleViewerTouchStart, onTouchMove: handleViewerTouchMove, onTouchEnd: handleViewerTouchEnd, onTouchCancel: handleViewerTouchCancel, children: [_jsx("button", { type: "button", onClick: () => void exitPerformanceMode(), className: "performance-mode-close", "aria-label": "Close performance mode", children: _jsx("span", { "aria-hidden": "true", children: "\u00D7" }) }), _jsx("div", { ref: performanceViewportRef, className: "performance-mode-body", children: renderActiveContent({ performanceMode: true }) }), performanceMediaNeedsTitle &&
                         (activeItem.content.contentType === 'image' ||
                             activeItem.content.contentType === 'pdf') && (_jsx("div", { className: "performance-mode-title", children: activeItem.content.title }))] })), showAddModal && (_jsx("div", { className: "modal-overlay", children: _jsxs("div", { className: "card modal-card max-h-[32rem] max-w-2xl overflow-y-auto", children: [_jsx("p", { className: "section-kicker", children: "Add Content" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Add songs to this setlist" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Stay on this page and keep tapping songs. New additions are saved in the background." }), addStatus && (_jsx("div", { className: `mt-5 status-banner ${addStatus.tone === 'success'
                                 ? 'status-banner-strong'

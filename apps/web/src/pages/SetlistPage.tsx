@@ -127,7 +127,6 @@ export default function SetlistPage() {
     lastY: null,
     hadMultipleTouches: false,
   })
-  const performanceModeRef = useRef<HTMLDivElement | null>(null)
   const performanceViewportRef = useRef<HTMLDivElement | null>(null)
   const addingContentIdsRef = useRef(new Set<string>())
   const isCacheSupported = isSetlistCacheSupported()
@@ -330,35 +329,6 @@ export default function SetlistPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isPerformanceMode, activeIndex, setlist])
 
-  useEffect(() => {
-    if (!isPerformanceMode || !performanceModeRef.current) return
-
-    const element = performanceModeRef.current
-
-    const handleFullscreenChange = () => {
-      if (document.fullscreenElement !== element) {
-        setIsPerformanceMode(false)
-      }
-    }
-
-    const requestFullscreen = async () => {
-      try {
-        if (document.fullscreenElement !== element) {
-          await element.requestFullscreen()
-        }
-      } catch (err) {
-        console.error('Fullscreen request failed', err)
-      }
-    }
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    void requestFullscreen()
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    }
-  }, [isPerformanceMode])
-
   const loadSetlist = async () => {
     try {
       const data = await setlistApi.getSetlist(groupId!, setlistId!)
@@ -506,14 +476,6 @@ export default function SetlistPage() {
 
   const exitPerformanceMode = async () => {
     setIsPerformanceMode(false)
-
-    if (document.fullscreenElement) {
-      try {
-        await document.exitFullscreen()
-      } catch (err) {
-        console.error('Fullscreen exit failed', err)
-      }
-    }
   }
 
   const saveReorderedItems = async (items: SetlistItem[]) => {
@@ -1067,7 +1029,6 @@ export default function SetlistPage() {
 
       {isPerformanceMode && activeItem && (
         <div
-          ref={performanceModeRef}
           className="performance-mode-overlay"
           onTouchStart={handleViewerTouchStart}
           onTouchMove={handleViewerTouchMove}
