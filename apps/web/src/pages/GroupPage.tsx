@@ -233,8 +233,13 @@ export default function GroupPage() {
     }
   }
 
-  const handleRenameContent = async (contentId: string, title: string) => {
-    const updatedContent = await contentApi.updateContentTitle(groupId!, contentId, title)
+  const handleEditContent = async (contentId: string, title: string, description: string) => {
+    const updatedContent = await contentApi.updateContentDetails(
+      groupId!,
+      contentId,
+      title,
+      description
+    )
 
     setContents((currentContents) =>
       currentContents.map((content) =>
@@ -586,7 +591,7 @@ export default function GroupPage() {
                 <ContentList
                   contents={contents}
                   onDelete={handleDeleteContent}
-                  onRename={handleRenameContent}
+                  onEdit={handleEditContent}
                   onPreview={handleOpenPreview}
                 />
               )}

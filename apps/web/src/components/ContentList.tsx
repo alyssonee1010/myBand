@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import LinkifiedText from './LinkifiedText'
 
 interface Content {
   id: string
@@ -16,15 +17,16 @@ interface Content {
 interface Props {
   contents: Content[]
   onDelete: (contentId: string) => Promise<void>
-  onRename: (contentId: string, title: string) => Promise<void>
+  onEdit: (contentId: string, title: string, description: string) => Promise<void>
   onPreview: (content: Content) => void
 }
 
-export default function ContentList({ contents, onDelete, onRename, onPreview }: Props) {
+export default function ContentList({ contents, onDelete, onEdit, onPreview }: Props) {
   const [editingContentId, setEditingContentId] = useState<string | null>(null)
   const [draftTitle, setDraftTitle] = useState('')
+  const [draftDescription, setDraftDescription] = useState('')
   const [savingContentId, setSavingContentId] = useState<string | null>(null)
-  const [renameError, setRenameError] = useState('')
+  const [editError, setEditError] = useState('')
 
   const getTypeLabel = (contentType: string) => {
     switch (contentType) {
@@ -44,31 +46,34 @@ export default function ContentList({ contents, onDelete, onRename, onPreview }:
   const startRenaming = (content: Content) => {
     setEditingContentId(content.id)
     setDraftTitle(content.title)
-    setRenameError('')
+    setDraftDescription(content.description || '')
+    setEditError('')
   }
 
   const cancelRenaming = () => {
     setEditingContentId(null)
     setDraftTitle('')
-    setRenameError('')
+    setDraftDescription('')
+    setEditError('')
   }
 
-  const handleRename = async (contentId: string) => {
+  const handleSaveDetails = async (contentId: string) => {
     const trimmedTitle = draftTitle.trim()
+    const trimmedDescription = draftDescription.trim()
 
     if (!trimmedTitle) {
-      setRenameError('Title is required')
+      setEditError('Title is required')
       return
     }
 
     setSavingContentId(contentId)
-    setRenameError('')
+    setEditError('')
 
     try {
-      await onRename(contentId, trimmedTitle)
+      await onEdit(contentId, trimmedTitle, trimmedDescription)
       cancelRenaming()
     } catch (error: any) {
-      setRenameError(error?.message || 'Failed to rename this item')
+      setEditError(error?.message || 'Failed to save this item')
     } finally {
       setSavingContentId(null)
     }
@@ -105,13 +110,21 @@ export default function ContentList({ contents, onDelete, onRename, onPreview }:
                       value={draftTitle}
                       onChange={(event) => setDraftTitle(event.target.value)}
                       className="input-field"
-                      placeholder="Rename this item"
+                      placeholder="Song title"
                       disabled={isSaving}
                       autoFocus
                     />
-                    {renameError && (
-                      <p className="text-sm text-red-700">{renameError}</p>
-                    )}
+                    <textarea
+                      value={draftDescription}
+                      onChange={(event) => setDraftDescription(event.target.value)}
+                      className="input-field min-h-[7.5rem] resize-y"
+                      placeholder="Add notes, links, or arrangement details"
+                      disabled={isSaving}
+                    />
+                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">
+                      Links like https://... or www... will be clickable after saving.
+                    </p>
+                    {editError && <p className="text-sm text-red-700">{editError}</p>}
                   </div>
                 ) : (
                   <div className="mt-4">
@@ -119,20 +132,23 @@ export default function ContentList({ contents, onDelete, onRename, onPreview }:
                       <button
                         type="button"
                         onClick={() => onPreview(content)}
-                        className="text-left text-2xl font-bold tracking-tight text-black transition hover:text-orange-600"
+                        className="max-w-full text-left text-2xl font-bold tracking-tight text-black transition hover:text-orange-600 [overflow-wrap:anywhere]"
                       >
                         {content.title}
                       </button>
                     ) : (
-                      <h3 className="text-2xl font-bold tracking-tight text-black">{content.title}</h3>
+                      <h3 className="text-2xl font-bold tracking-tight text-black [overflow-wrap:anywhere]">
+                        {content.title}
+                      </h3>
                     )}
                   </div>
                 )}
 
                 {content.description && (
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-black/60">
-                    {content.description}
-                  </p>
+                  <LinkifiedText
+                    text={content.description}
+                    className="mt-3 max-w-2xl text-sm leading-6 text-black/60"
+                  />
                 )}
                 <p className="mt-4 text-xs uppercase tracking-[0.18em] text-black/40">
                   Added by {content.createdBy.name || content.createdBy.email}
@@ -153,11 +169,11 @@ export default function ContentList({ contents, onDelete, onRename, onPreview }:
                 {isEditing ? (
                   <>
                     <button
-                      onClick={() => void handleRename(content.id)}
+                      onClick={() => void handleSaveDetails(content.id)}
                       className="btn-primary"
                       disabled={isSaving}
                     >
-                      {isSaving ? 'Saving...' : 'Save Title'}
+                      {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
                     <button
                       onClick={cancelRenaming}
@@ -172,7 +188,7 @@ export default function ContentList({ contents, onDelete, onRename, onPreview }:
                     onClick={() => startRenaming(content)}
                     className="btn-secondary"
                   >
-                    Rename
+                    Edit Details
                   </button>
                 )}
 

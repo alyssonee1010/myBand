@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DragDropContext, Draggable, Droppable, DropResult } from 'react-beautiful-dnd'
 import { contentApi, setlistApi } from '../lib/api'
+import LinkifiedText from '../components/LinkifiedText'
 import {
   cacheSetlistFiles,
   clearSetlistCache,
@@ -996,13 +997,18 @@ export default function SetlistPage() {
                           : 'border-black/10 bg-white/80'
                       }`}
                     >
-                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          <p className="text-lg font-semibold tracking-tight">{content.title}</p>
-                          <p className="mt-1 text-sm text-black/60">
-                            {content.contentType}
-                            {content.description ? ` · ${content.description}` : ''}
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-lg font-semibold tracking-tight [overflow-wrap:anywhere]">
+                            {content.title}
                           </p>
+                          <p className="mt-1 text-sm text-black/60">{content.contentType}</p>
+                          {content.description && (
+                            <LinkifiedText
+                              text={content.description}
+                              className="mt-2 text-sm leading-6 text-black/60"
+                            />
+                          )}
                         </div>
                         <button
                           type="button"

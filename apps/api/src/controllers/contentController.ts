@@ -200,12 +200,15 @@ export const getContentFile = asyncHandler(async (req: Request, res: Response) =
 });
 
 /**
- * Update the visible title of an existing content item
+ * Update the visible metadata of an existing content item
  */
 export const updateContent = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
   const { groupId, contentId } = req.params;
+  const hasTitle = Object.prototype.hasOwnProperty.call(req.body, 'title');
+  const hasDescription = Object.prototype.hasOwnProperty.call(req.body, 'description');
   const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+  const descriptionInput = req.body.description;
 
   if (!userId) {
     throw new ApiError(401, 'Unauthorized');
@@ -219,8 +222,21 @@ export const updateContent = asyncHandler(async (req: Request, res: Response) =>
     throw new ApiError(403, 'You are not a member of this group');
   }
 
-  if (!title) {
+  if (!hasTitle && !hasDescription) {
+    throw new ApiError(400, 'Nothing to update');
+  }
+
+  if (hasTitle && !title) {
     throw new ApiError(400, 'Title is required');
+  }
+
+  if (
+    hasDescription &&
+    descriptionInput !== null &&
+    descriptionInput !== undefined &&
+    typeof descriptionInput !== 'string'
+  ) {
+    throw new ApiError(400, 'Description must be a string');
   }
 
   const content = await prisma.content.findUnique({
@@ -231,9 +247,24 @@ export const updateContent = asyncHandler(async (req: Request, res: Response) =>
     throw new ApiError(404, 'Content not found');
   }
 
+  const updateData: {
+    title?: string;
+    description?: string | null;
+  } = {};
+
+  if (hasTitle) {
+    updateData.title = title;
+  }
+
+  if (hasDescription) {
+    const trimmedDescription =
+      typeof descriptionInput === 'string' ? descriptionInput.trim() : '';
+    updateData.description = trimmedDescription || null;
+  }
+
   const updatedContent = await prisma.content.update({
     where: { id: contentId },
-    data: { title },
+    data: updateData,
     include: {
       createdBy: {
         select: contentCreatorSelection,

@@ -1,4 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import LinkifiedText from './LinkifiedText';
 export default function ContentPreviewModal({ content, fileUrl, loading, error, onClose }) {
     const renderPreview = () => {
         if (loading) {
@@ -15,6 +16,6 @@ export default function ContentPreviewModal({ content, fileUrl, loading, error, 
         }
         return (_jsx("div", { className: "overflow-hidden rounded-[24px] border border-black/10 bg-black/5", children: _jsx("object", { data: fileUrl, type: "application/pdf", className: "h-[70vh] w-full", children: _jsx("iframe", { src: fileUrl, title: content.title, className: "h-[70vh] w-full" }, fileUrl) }) }));
     };
-    return (_jsx("div", { className: "modal-overlay", children: _jsxs("div", { className: "card modal-card max-h-[90vh] max-w-5xl overflow-y-auto", children: [_jsxs("div", { className: "flex flex-col gap-4 md:flex-row md:items-start md:justify-between", children: [_jsxs("div", { className: "min-w-0", children: [_jsx("p", { className: "section-kicker", children: "Preview" }), _jsx("h2", { className: "mt-2 text-3xl font-bold tracking-tight", children: content.title }), content.description && (_jsx("p", { className: "mt-3 max-w-3xl text-sm leading-6 text-black/60", children: content.description }))] }), _jsx("button", { type: "button", onClick: onClose, className: "btn-secondary", children: "Close" })] }), _jsx("div", { className: "mt-6", children: renderPreview() })] }) }));
+    return (_jsx("div", { className: "modal-overlay", children: _jsxs("div", { className: "card modal-card max-h-[90vh] max-w-5xl overflow-y-auto", children: [_jsxs("div", { className: "flex flex-col gap-4 md:flex-row md:items-start md:justify-between", children: [_jsxs("div", { className: "min-w-0", children: [_jsx("p", { className: "section-kicker", children: "Preview" }), _jsx("h2", { className: "mt-2 text-3xl font-bold tracking-tight", children: content.title }), content.description && (_jsx(LinkifiedText, { text: content.description, className: "mt-3 max-w-3xl text-sm leading-6 text-black/60" }))] }), _jsx("button", { type: "button", onClick: onClose, className: "btn-secondary", children: "Close" })] }), _jsx("div", { className: "mt-6", children: renderPreview() })] }) }));
 }
 //# sourceMappingURL=ContentPreviewModal.js.map

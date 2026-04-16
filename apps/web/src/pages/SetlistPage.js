@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import { contentApi, setlistApi } from '../lib/api';
+import LinkifiedText from '../components/LinkifiedText';
 import { cacheSetlistFiles, clearSetlistCache, getCachedContentFile, getCacheableSetlistItems, getSetlistCacheStatus, isSetlistCacheSupported, } from '../lib/setlistCache';
 import '../styles/setlist.css';
 const MIN_SWIPE_DISTANCE_PX = 96;
@@ -525,7 +526,7 @@ export default function SetlistPage() {
                                     const isAdding = addingContentIds.includes(content.id);
                                     return (_jsx("div", { className: `rounded-[24px] border p-4 transition ${isAlreadyAdded
                                             ? 'border-teal-200 bg-teal-50/70'
-                                            : 'border-black/10 bg-white/80'}`, children: _jsxs("div", { className: "flex flex-col gap-3 md:flex-row md:items-center md:justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-lg font-semibold tracking-tight", children: content.title }), _jsxs("p", { className: "mt-1 text-sm text-black/60", children: [content.contentType, content.description ? ` · ${content.description}` : ''] })] }), _jsx("button", { type: "button", onClick: () => void handleAddContent(content), className: isAlreadyAdded ? 'btn-secondary' : 'btn-primary', disabled: isAlreadyAdded || isAdding, children: isAdding ? 'Adding...' : isAlreadyAdded ? 'Already Added' : 'Add' })] }) }, content.id));
+                                            : 'border-black/10 bg-white/80'}`, children: _jsxs("div", { className: "flex flex-col gap-3 md:flex-row md:items-start md:justify-between", children: [_jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("p", { className: "text-lg font-semibold tracking-tight [overflow-wrap:anywhere]", children: content.title }), _jsx("p", { className: "mt-1 text-sm text-black/60", children: content.contentType }), content.description && (_jsx(LinkifiedText, { text: content.description, className: "mt-2 text-sm leading-6 text-black/60" }))] }), _jsx("button", { type: "button", onClick: () => void handleAddContent(content), className: isAlreadyAdded ? 'btn-secondary' : 'btn-primary', disabled: isAlreadyAdded || isAdding, children: isAdding ? 'Adding...' : isAlreadyAdded ? 'Already Added' : 'Add' })] }) }, content.id));
                                 })] })), _jsx("button", { onClick: () => {
                                 setShowAddModal(false);
                                 setAddStatus(null);

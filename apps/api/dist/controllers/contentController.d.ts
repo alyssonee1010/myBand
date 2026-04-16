@@ -16,7 +16,7 @@ export declare const getGroupContent: (req: Request, res: Response, next: import
  */
 export declare const getContentFile: (req: Request, res: Response, next: import("express").NextFunction) => void;
 /**
- * Update the visible title of an existing content item
+ * Update the visible metadata of an existing content item
  */
 export declare const updateContent: (req: Request, res: Response, next: import("express").NextFunction) => void;
 /**

@@ -28,7 +28,7 @@ export declare const contentApi: {
     addTextContent: (groupId: string, title: string, textContent: string, contentType: string, description?: string) => Promise<any>;
     getGroupContent: (groupId: string) => Promise<any>;
     getContentFile: (groupId: string, contentId: string) => Promise<Blob>;
-    updateContentTitle: (groupId: string, contentId: string, title: string) => Promise<any>;
+    updateContentDetails: (groupId: string, contentId: string, title: string, description: string) => Promise<any>;
     deleteContent: (groupId: string, contentId: string) => Promise<any>;
 };
 export declare const joinApi: {

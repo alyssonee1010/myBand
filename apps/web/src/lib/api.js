@@ -175,9 +175,10 @@ export const contentApi = {
         });
         return data;
     },
-    updateContentTitle: async (groupId, contentId, title) => {
+    updateContentDetails: async (groupId, contentId, title, description) => {
         const { data } = await apiClient.patch(`/groups/${groupId}/content/${contentId}`, {
             title,
+            description,
         });
         return data;
     },

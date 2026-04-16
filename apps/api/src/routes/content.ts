@@ -64,7 +64,7 @@ router.get('/:contentId/file', asyncHandler(getContentFile));
 /**
  * @route PATCH /api/groups/:groupId/content/:contentId
  * @desc Update content metadata
- * @body { title }
+ * @body { title?, description? }
  */
 router.patch('/:contentId', asyncHandler(updateContent));
 

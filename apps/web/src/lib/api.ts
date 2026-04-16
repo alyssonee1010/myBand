@@ -231,9 +231,15 @@ export const contentApi = {
     return data as Blob
   },
 
-  updateContentTitle: async (groupId: string, contentId: string, title: string) => {
+  updateContentDetails: async (
+    groupId: string,
+    contentId: string,
+    title: string,
+    description: string
+  ) => {
     const { data } = await apiClient.patch(`/groups/${groupId}/content/${contentId}`, {
       title,
+      description,
     })
     return data
   },

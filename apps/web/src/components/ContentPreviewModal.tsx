@@ -1,3 +1,5 @@
+import LinkifiedText from './LinkifiedText'
+
 interface PreviewContent {
   id: string
   title: string
@@ -73,9 +75,10 @@ export default function ContentPreviewModal({ content, fileUrl, loading, error, 
             <p className="section-kicker">Preview</p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight">{content.title}</h2>
             {content.description && (
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-black/60">
-                {content.description}
-              </p>
+              <LinkifiedText
+                text={content.description}
+                className="mt-3 max-w-3xl text-sm leading-6 text-black/60"
+              />
             )}
           </div>
 

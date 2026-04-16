@@ -68,9 +68,12 @@ export default function UploadContentModal({ onClose, onUpload }: Props) {
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="input-field h-24 resize-none"
+              className="input-field min-h-[7.5rem] resize-y"
               placeholder="A short note for the band..."
             />
+            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-black/40">
+              Links like https://... or www... will be clickable in the library.
+            </p>
           </div>
 
           <div>
