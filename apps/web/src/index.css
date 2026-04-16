@@ -258,6 +258,23 @@ select {
   background: rgba(255, 252, 249, 0.98);
 }
 
+.install-hint-overlay {
+  align-items: flex-start;
+  padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 1rem));
+  padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
+}
+
+.install-hint-card {
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem);
+  overflow-y: auto;
+}
+
+@media (min-width: 640px) {
+  .install-hint-overlay {
+    align-items: center;
+  }
+}
+
 input[type='file'].input-field {
   @apply cursor-pointer py-2.5;
 }

@@ -46,8 +46,8 @@ export default function InstallAppButton({
         {isInstalling ? busyLabel : label}
       </button>
       {showManualInstallHint && manualInstallHint && (
-        <div className="modal-overlay">
-          <div className="card modal-card max-w-md">
+        <div className="modal-overlay install-hint-overlay">
+          <div className="card modal-card install-hint-card max-w-md">
             <p className="section-kicker">Install</p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight">{manualInstallHint.title}</h2>
             <p className="mt-3 text-sm leading-6 text-black/60">
@@ -62,11 +62,11 @@ export default function InstallAppButton({
                 </p>
               ))}
             </div>
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex justify-end max-sm:justify-stretch">
               <button
                 type="button"
                 onClick={() => setShowManualInstallHint(false)}
-                className="btn-secondary"
+                className="btn-secondary max-sm:w-full"
               >
                 Close
               </button>
