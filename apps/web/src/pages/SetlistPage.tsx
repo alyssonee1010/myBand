@@ -55,8 +55,48 @@ interface ViewerTouchGesture {
   hadMultipleTouches: boolean
 }
 
+interface ViewerSize {
+  width: number
+  height: number
+}
+
 const MIN_SWIPE_DISTANCE_PX = 96
 const SWIPE_DIRECTION_RATIO = 1.35
+const PDF_MEDIA_BOX_PATTERN = /\/MediaBox\s*\[\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\]/i
+
+const EMPTY_VIEWER_SIZE: ViewerSize = {
+  width: 0,
+  height: 0,
+}
+
+const extractPdfPageSize = async (blob: Blob) => {
+  try {
+    const pdfText = await blob.text()
+    const mediaBoxMatch = pdfText.match(PDF_MEDIA_BOX_PATTERN)
+
+    if (!mediaBoxMatch) {
+      return null
+    }
+
+    const left = Number.parseFloat(mediaBoxMatch[1])
+    const bottom = Number.parseFloat(mediaBoxMatch[2])
+    const right = Number.parseFloat(mediaBoxMatch[3])
+    const top = Number.parseFloat(mediaBoxMatch[4])
+    const width = Math.abs(right - left)
+    const height = Math.abs(top - bottom)
+
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      return null
+    }
+
+    return {
+      width,
+      height,
+    }
+  } catch (error) {
+    return null
+  }
+}
 
 export default function SetlistPage() {
   const navigate = useNavigate()
@@ -68,8 +108,12 @@ export default function SetlistPage() {
   const [loading, setLoading] = useState(true)
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const [activeFileUrl, setActiveFileUrl] = useState<string | null>(null)
+  const [activeFileBlob, setActiveFileBlob] = useState<Blob | null>(null)
   const [isActiveFileLoading, setIsActiveFileLoading] = useState(false)
   const [isPerformanceMode, setIsPerformanceMode] = useState(false)
+  const [performanceViewportSize, setPerformanceViewportSize] = useState<ViewerSize>(EMPTY_VIEWER_SIZE)
+  const [performanceImageSize, setPerformanceImageSize] = useState<ViewerSize>(EMPTY_VIEWER_SIZE)
+  const [performancePdfSize, setPerformancePdfSize] = useState<ViewerSize | null>(null)
   const [addingContentIds, setAddingContentIds] = useState<string[]>([])
   const [addStatus, setAddStatus] = useState<StatusMessage | null>(null)
   const [cacheStatus, setCacheStatus] = useState<SetlistCacheStatus | null>(null)
@@ -84,6 +128,7 @@ export default function SetlistPage() {
     hadMultipleTouches: false,
   })
   const performanceModeRef = useRef<HTMLDivElement | null>(null)
+  const performanceViewportRef = useRef<HTMLDivElement | null>(null)
   const addingContentIdsRef = useRef(new Set<string>())
   const isCacheSupported = isSetlistCacheSupported()
   const cacheableContentIds = setlist
@@ -128,11 +173,13 @@ export default function SetlistPage() {
         }
         return null
       })
+      setActiveFileBlob(null)
       setIsActiveFileLoading(false)
       return
     }
 
     let isCancelled = false
+    setActiveFileBlob(null)
 
     const loadActiveFile = async () => {
       setIsActiveFileLoading(true)
@@ -145,6 +192,7 @@ export default function SetlistPage() {
         if (isCancelled) return
 
         const nextFileUrl = URL.createObjectURL(blob)
+        setActiveFileBlob(blob)
         setActiveFileUrl((currentFileUrl) => {
           if (currentFileUrl) {
             URL.revokeObjectURL(currentFileUrl)
@@ -153,6 +201,7 @@ export default function SetlistPage() {
         })
       } catch (err) {
         if (!isCancelled) {
+          setActiveFileBlob(null)
           setActiveFileUrl((currentFileUrl) => {
             if (currentFileUrl) {
               URL.revokeObjectURL(currentFileUrl)
@@ -173,6 +222,58 @@ export default function SetlistPage() {
       isCancelled = true
     }
   }, [groupId, activeItem?.content.id, activeItem?.content.fileUrl])
+
+  useEffect(() => {
+    if (!isPerformanceMode || !performanceViewportRef.current) {
+      setPerformanceViewportSize(EMPTY_VIEWER_SIZE)
+      return
+    }
+
+    const element = performanceViewportRef.current
+    const updateViewportSize = () => {
+      setPerformanceViewportSize({
+        width: element.clientWidth,
+        height: element.clientHeight,
+      })
+    }
+
+    updateViewportSize()
+
+    const resizeObserver = new ResizeObserver(updateViewportSize)
+    resizeObserver.observe(element)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [isPerformanceMode, activeItem?.content.id])
+
+  useEffect(() => {
+    setPerformanceImageSize(EMPTY_VIEWER_SIZE)
+    setPerformancePdfSize(null)
+  }, [activeItem?.content.id])
+
+  useEffect(() => {
+    if (!isPerformanceMode || activeItem?.content.contentType !== 'pdf' || !activeFileBlob) {
+      setPerformancePdfSize(null)
+      return
+    }
+
+    let isCancelled = false
+
+    const loadPdfSize = async () => {
+      const nextPdfSize = await extractPdfPageSize(activeFileBlob)
+
+      if (!isCancelled) {
+        setPerformancePdfSize(nextPdfSize)
+      }
+    }
+
+    void loadPdfSize()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [isPerformanceMode, activeItem?.content.contentType, activeItem?.content.id, activeFileBlob])
 
   useEffect(() => {
     if (!groupId || !setlistId || !setlist) {
@@ -390,6 +491,15 @@ export default function SetlistPage() {
     resetViewerTouchGesture()
   }
 
+  const handlePerformanceImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const image = event.currentTarget
+
+    setPerformanceImageSize({
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    })
+  }
+
   const enterPerformanceMode = () => {
     setIsPerformanceMode(true)
   }
@@ -591,7 +701,43 @@ export default function SetlistPage() {
     }
   }
 
-  const renderActiveContent = () => {
+  const performanceMediaNeedsTitle = (() => {
+    if (!isPerformanceMode || !activeItem) {
+      return false
+    }
+
+    if (performanceViewportSize.width <= 0 || performanceViewportSize.height <= 0) {
+      return false
+    }
+
+    if (activeItem.content.contentType === 'image') {
+      if (performanceImageSize.width <= 0 || performanceImageSize.height <= 0) {
+        return false
+      }
+
+      return (
+        performanceImageSize.width > performanceViewportSize.width ||
+        performanceImageSize.height > performanceViewportSize.height
+      )
+    }
+
+    if (activeItem.content.contentType === 'pdf') {
+      if (!performancePdfSize) {
+        return false
+      }
+
+      return (
+        performancePdfSize.width > performanceViewportSize.width ||
+        performancePdfSize.height > performanceViewportSize.height
+      )
+    }
+
+    return false
+  })()
+
+  const renderActiveContent = (options?: { performanceMode?: boolean }) => {
+    const isPerformanceView = options?.performanceMode ?? false
+
     if (!activeItem) {
       return (
         <div className="setlist-viewer-empty">
@@ -613,7 +759,13 @@ export default function SetlistPage() {
     if (content.contentType === 'image' && activeFileUrl) {
       return (
         <div className="setlist-viewer-media">
-          <img src={activeFileUrl} alt={content.title} className="setlist-viewer-image" />
+          <img
+            key={activeFileUrl}
+            src={activeFileUrl}
+            alt={content.title}
+            className="setlist-viewer-image"
+            onLoad={isPerformanceView ? handlePerformanceImageLoad : undefined}
+          />
         </div>
       )
     }
@@ -823,7 +975,7 @@ export default function SetlistPage() {
                 onTouchEnd={handleViewerTouchEnd}
                 onTouchCancel={handleViewerTouchCancel}
               >
-                {renderActiveContent()}
+                {renderActiveContent({ performanceMode: false })}
               </div>
 
               {activeItem && (
@@ -922,28 +1074,26 @@ export default function SetlistPage() {
           onTouchEnd={handleViewerTouchEnd}
           onTouchCancel={handleViewerTouchCancel}
         >
-          <div className="performance-mode-topbar">
-            <div>
-              <p className="performance-mode-label">Performance Mode</p>
-              <h2>{activeItem.content.title}</h2>
-              <p>{activeIndex + 1} of {setlist?.items.length}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void exitPerformanceMode()}
-              className="performance-mode-close"
-            >
-              Close
-            </button>
+          <button
+            type="button"
+            onClick={() => void exitPerformanceMode()}
+            className="performance-mode-close"
+            aria-label="Close performance mode"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+
+          <div ref={performanceViewportRef} className="performance-mode-body">
+            {renderActiveContent({ performanceMode: true })}
           </div>
 
-          <div className="performance-mode-body">
-            {renderActiveContent()}
-          </div>
-
-          <div className="performance-mode-hint">
-            Use a clear one-finger swipe between songs. Pinch to zoom stays on the same song.
-          </div>
+          {performanceMediaNeedsTitle &&
+            (activeItem.content.contentType === 'image' ||
+              activeItem.content.contentType === 'pdf') && (
+              <div className="performance-mode-title">
+                {activeItem.content.title}
+              </div>
+            )}
         </div>
       )}
 
