@@ -46,6 +46,17 @@ interface StatusMessage {
   text: string
 }
 
+interface ViewerTouchGesture {
+  startX: number | null
+  startY: number | null
+  lastX: number | null
+  lastY: number | null
+  hadMultipleTouches: boolean
+}
+
+const MIN_SWIPE_DISTANCE_PX = 96
+const SWIPE_DIRECTION_RATIO = 1.35
+
 export default function SetlistPage() {
   const navigate = useNavigate()
   const { groupId, setlistId } = useParams()
@@ -64,7 +75,13 @@ export default function SetlistPage() {
   const [cacheStatusMessage, setCacheStatusMessage] = useState<StatusMessage | null>(null)
   const [isCachingSetlist, setIsCachingSetlist] = useState(false)
 
-  const touchStartX = useRef<number | null>(null)
+  const viewerTouchGestureRef = useRef<ViewerTouchGesture>({
+    startX: null,
+    startY: null,
+    lastX: null,
+    lastY: null,
+    hadMultipleTouches: false,
+  })
   const performanceModeRef = useRef<HTMLDivElement | null>(null)
   const addingContentIdsRef = useRef(new Set<string>())
   const isCacheSupported = isSetlistCacheSupported()
@@ -278,18 +295,87 @@ export default function SetlistPage() {
     }
   }
 
+  const resetViewerTouchGesture = () => {
+    viewerTouchGestureRef.current = {
+      startX: null,
+      startY: null,
+      lastX: null,
+      lastY: null,
+      hadMultipleTouches: false,
+    }
+  }
+
   const handleViewerTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    touchStartX.current = e.changedTouches[0]?.clientX ?? null
+    const primaryTouch = e.touches[0] ?? e.changedTouches[0]
+
+    if (!primaryTouch) {
+      resetViewerTouchGesture()
+      return
+    }
+
+    if (viewerTouchGestureRef.current.startX !== null) {
+      viewerTouchGestureRef.current.lastX = primaryTouch.clientX
+      viewerTouchGestureRef.current.lastY = primaryTouch.clientY
+      viewerTouchGestureRef.current.hadMultipleTouches = true
+      return
+    }
+
+    viewerTouchGestureRef.current = {
+      startX: primaryTouch.clientX,
+      startY: primaryTouch.clientY,
+      lastX: primaryTouch.clientX,
+      lastY: primaryTouch.clientY,
+      hadMultipleTouches: e.touches.length > 1 || e.changedTouches.length > 1,
+    }
+  }
+
+  const handleViewerTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const primaryTouch = e.touches[0] ?? e.changedTouches[0]
+
+    if (viewerTouchGestureRef.current.startX === null || !primaryTouch) {
+      return
+    }
+
+    viewerTouchGestureRef.current.lastX = primaryTouch.clientX
+    viewerTouchGestureRef.current.lastY = primaryTouch.clientY
+
+    if (e.touches.length > 1 || e.changedTouches.length > 1) {
+      viewerTouchGestureRef.current.hadMultipleTouches = true
+    }
   }
 
   const handleViewerTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (touchStartX.current === null) return
+    const touchGesture = viewerTouchGestureRef.current
 
-    const endX = e.changedTouches[0]?.clientX ?? touchStartX.current
-    const deltaX = endX - touchStartX.current
-    touchStartX.current = null
+    if (touchGesture.startX === null || touchGesture.startY === null) {
+      return
+    }
 
-    if (Math.abs(deltaX) < 50) return
+    const primaryTouch = e.changedTouches[0] ?? e.touches[0]
+    if (primaryTouch) {
+      touchGesture.lastX = primaryTouch.clientX
+      touchGesture.lastY = primaryTouch.clientY
+    }
+
+    if (e.changedTouches.length > 1 || e.touches.length > 0) {
+      touchGesture.hadMultipleTouches = true
+    }
+
+    if (touchGesture.hadMultipleTouches) {
+      if (e.touches.length === 0) {
+        resetViewerTouchGesture()
+      }
+      return
+    }
+
+    const endX = touchGesture.lastX ?? touchGesture.startX
+    const endY = touchGesture.lastY ?? touchGesture.startY
+    const deltaX = endX - touchGesture.startX
+    const deltaY = endY - touchGesture.startY
+    resetViewerTouchGesture()
+
+    if (Math.abs(deltaX) < MIN_SWIPE_DISTANCE_PX) return
+    if (Math.abs(deltaX) <= Math.abs(deltaY) * SWIPE_DIRECTION_RATIO) return
 
     if (deltaX < 0) {
       handleNext()
@@ -297,6 +383,10 @@ export default function SetlistPage() {
     }
 
     handlePrevious()
+  }
+
+  const handleViewerTouchCancel = () => {
+    resetViewerTouchGesture()
   }
 
   const enterPerformanceMode = () => {
@@ -728,7 +818,9 @@ export default function SetlistPage() {
               <div
                 className="setlist-viewer-body"
                 onTouchStart={handleViewerTouchStart}
+                onTouchMove={handleViewerTouchMove}
                 onTouchEnd={handleViewerTouchEnd}
+                onTouchCancel={handleViewerTouchCancel}
               >
                 {renderActiveContent()}
               </div>
@@ -736,8 +828,8 @@ export default function SetlistPage() {
               {activeItem && (
                 <div className="setlist-viewer-footer">
                   <p className="text-sm text-black/60">
-                    Swipe on touch screens, use the buttons here, or open Performance Mode for
-                    fullscreen navigation.
+                    Use a clear one-finger swipe to change songs. Pinch to zoom will stay on the
+                    current song.
                   </p>
                 </div>
               )}
@@ -825,7 +917,9 @@ export default function SetlistPage() {
           ref={performanceModeRef}
           className="performance-mode-overlay"
           onTouchStart={handleViewerTouchStart}
+          onTouchMove={handleViewerTouchMove}
           onTouchEnd={handleViewerTouchEnd}
+          onTouchCancel={handleViewerTouchCancel}
         >
           <div className="performance-mode-topbar">
             <div>
@@ -847,7 +941,7 @@ export default function SetlistPage() {
           </div>
 
           <div className="performance-mode-hint">
-            Swipe between songs on iPad. Use keyboard left and right arrows on laptop.
+            Use a clear one-finger swipe between songs. Pinch to zoom stays on the same song.
           </div>
         </div>
       )}

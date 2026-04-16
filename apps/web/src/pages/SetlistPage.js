@@ -5,6 +5,8 @@ import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import { contentApi, setlistApi } from '../lib/api';
 import { cacheSetlistFiles, clearSetlistCache, getCachedContentFile, getCacheableSetlistItems, getSetlistCacheStatus, isSetlistCacheSupported, } from '../lib/setlistCache';
 import '../styles/setlist.css';
+const MIN_SWIPE_DISTANCE_PX = 96;
+const SWIPE_DIRECTION_RATIO = 1.35;
 export default function SetlistPage() {
     const navigate = useNavigate();
     const { groupId, setlistId } = useParams();
@@ -21,7 +23,13 @@ export default function SetlistPage() {
     const [cacheStatus, setCacheStatus] = useState(null);
     const [cacheStatusMessage, setCacheStatusMessage] = useState(null);
     const [isCachingSetlist, setIsCachingSetlist] = useState(false);
-    const touchStartX = useRef(null);
+    const viewerTouchGestureRef = useRef({
+        startX: null,
+        startY: null,
+        lastX: null,
+        lastY: null,
+        hadMultipleTouches: false,
+    });
     const performanceModeRef = useRef(null);
     const addingContentIdsRef = useRef(new Set());
     const isCacheSupported = isSetlistCacheSupported();
@@ -208,22 +216,82 @@ export default function SetlistPage() {
             goToItemAtIndex(activeIndex + 1);
         }
     };
+    const resetViewerTouchGesture = () => {
+        viewerTouchGestureRef.current = {
+            startX: null,
+            startY: null,
+            lastX: null,
+            lastY: null,
+            hadMultipleTouches: false,
+        };
+    };
     const handleViewerTouchStart = (e) => {
-        touchStartX.current = e.changedTouches[0]?.clientX ?? null;
+        const primaryTouch = e.touches[0] ?? e.changedTouches[0];
+        if (!primaryTouch) {
+            resetViewerTouchGesture();
+            return;
+        }
+        if (viewerTouchGestureRef.current.startX !== null) {
+            viewerTouchGestureRef.current.lastX = primaryTouch.clientX;
+            viewerTouchGestureRef.current.lastY = primaryTouch.clientY;
+            viewerTouchGestureRef.current.hadMultipleTouches = true;
+            return;
+        }
+        viewerTouchGestureRef.current = {
+            startX: primaryTouch.clientX,
+            startY: primaryTouch.clientY,
+            lastX: primaryTouch.clientX,
+            lastY: primaryTouch.clientY,
+            hadMultipleTouches: e.touches.length > 1 || e.changedTouches.length > 1,
+        };
+    };
+    const handleViewerTouchMove = (e) => {
+        const primaryTouch = e.touches[0] ?? e.changedTouches[0];
+        if (viewerTouchGestureRef.current.startX === null || !primaryTouch) {
+            return;
+        }
+        viewerTouchGestureRef.current.lastX = primaryTouch.clientX;
+        viewerTouchGestureRef.current.lastY = primaryTouch.clientY;
+        if (e.touches.length > 1 || e.changedTouches.length > 1) {
+            viewerTouchGestureRef.current.hadMultipleTouches = true;
+        }
     };
     const handleViewerTouchEnd = (e) => {
-        if (touchStartX.current === null)
+        const touchGesture = viewerTouchGestureRef.current;
+        if (touchGesture.startX === null || touchGesture.startY === null) {
             return;
-        const endX = e.changedTouches[0]?.clientX ?? touchStartX.current;
-        const deltaX = endX - touchStartX.current;
-        touchStartX.current = null;
-        if (Math.abs(deltaX) < 50)
+        }
+        const primaryTouch = e.changedTouches[0] ?? e.touches[0];
+        if (primaryTouch) {
+            touchGesture.lastX = primaryTouch.clientX;
+            touchGesture.lastY = primaryTouch.clientY;
+        }
+        if (e.changedTouches.length > 1 || e.touches.length > 0) {
+            touchGesture.hadMultipleTouches = true;
+        }
+        if (touchGesture.hadMultipleTouches) {
+            if (e.touches.length === 0) {
+                resetViewerTouchGesture();
+            }
+            return;
+        }
+        const endX = touchGesture.lastX ?? touchGesture.startX;
+        const endY = touchGesture.lastY ?? touchGesture.startY;
+        const deltaX = endX - touchGesture.startX;
+        const deltaY = endY - touchGesture.startY;
+        resetViewerTouchGesture();
+        if (Math.abs(deltaX) < MIN_SWIPE_DISTANCE_PX)
+            return;
+        if (Math.abs(deltaX) <= Math.abs(deltaY) * SWIPE_DIRECTION_RATIO)
             return;
         if (deltaX < 0) {
             handleNext();
             return;
         }
         handlePrevious();
+    };
+    const handleViewerTouchCancel = () => {
+        resetViewerTouchGesture();
     };
     const enterPerformanceMode = () => {
         setIsPerformanceMode(true);
@@ -444,13 +512,13 @@ export default function SetlistPage() {
                                         setShowAddModal(true);
                                     }, className: "btn-primary", children: "Add Your First Song" }) })] })) : (_jsxs("div", { className: "setlist-layout", children: [_jsxs("section", { className: "card setlist-viewer", children: [_jsxs("div", { className: "setlist-viewer-header", children: [_jsxs("div", { children: [_jsx("p", { className: "setlist-viewer-label", children: "Now Viewing" }), _jsx("h3", { className: "text-2xl font-bold tracking-tight", children: activeItem?.content.title || 'Select a song' }), _jsx("p", { className: "mt-2 text-sm text-black/60", children: activeIndex >= 0
                                                             ? `${activeIndex + 1} of ${setlist?.items.length}`
-                                                            : 'No active song' })] }), _jsxs("div", { className: "setlist-viewer-actions", children: [_jsx("button", { type: "button", onClick: handlePrevious, disabled: !canGoPrevious, className: "btn-secondary", children: "Previous" }), _jsx("button", { type: "button", onClick: handleNext, disabled: !canGoNext, className: "btn-primary", children: "Next" })] })] }), _jsx("div", { className: "setlist-viewer-body", onTouchStart: handleViewerTouchStart, onTouchEnd: handleViewerTouchEnd, children: renderActiveContent() }), activeItem && (_jsx("div", { className: "setlist-viewer-footer", children: _jsx("p", { className: "text-sm text-black/60", children: "Swipe on touch screens, use the buttons here, or open Performance Mode for fullscreen navigation." }) }))] }), _jsxs("section", { className: "card", children: [_jsxs("div", { className: "flex items-center justify-between gap-3", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "Order" }), _jsx("h2", { className: "mt-3 text-2xl font-bold tracking-tight", children: "Running Order" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Drag songs to rearrange the playing order." })] }), _jsx("span", { className: "stat-pill", children: setlist?.items.length || 0 })] }), _jsx(DragDropContext, { onDragEnd: handleDragEnd, children: _jsx(Droppable, { droppableId: "setlist", children: (provided, snapshot) => (_jsxs("div", { ...provided.droppableProps, ref: provided.innerRef, className: `mt-5 space-y-3 rounded-[28px] transition ${snapshot.isDraggingOver ? 'bg-[rgba(255,106,0,0.08)] p-3' : ''}`, children: [setlist?.items.map((item, index) => {
+                                                            : 'No active song' })] }), _jsxs("div", { className: "setlist-viewer-actions", children: [_jsx("button", { type: "button", onClick: handlePrevious, disabled: !canGoPrevious, className: "btn-secondary", children: "Previous" }), _jsx("button", { type: "button", onClick: handleNext, disabled: !canGoNext, className: "btn-primary", children: "Next" })] })] }), _jsx("div", { className: "setlist-viewer-body", onTouchStart: handleViewerTouchStart, onTouchMove: handleViewerTouchMove, onTouchEnd: handleViewerTouchEnd, onTouchCancel: handleViewerTouchCancel, children: renderActiveContent() }), activeItem && (_jsx("div", { className: "setlist-viewer-footer", children: _jsx("p", { className: "text-sm text-black/60", children: "Use a clear one-finger swipe to change songs. Pinch to zoom will stay on the current song." }) }))] }), _jsxs("section", { className: "card", children: [_jsxs("div", { className: "flex items-center justify-between gap-3", children: [_jsxs("div", { children: [_jsx("p", { className: "section-kicker", children: "Order" }), _jsx("h2", { className: "mt-3 text-2xl font-bold tracking-tight", children: "Running Order" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Drag songs to rearrange the playing order." })] }), _jsx("span", { className: "stat-pill", children: setlist?.items.length || 0 })] }), _jsx(DragDropContext, { onDragEnd: handleDragEnd, children: _jsx(Droppable, { droppableId: "setlist", children: (provided, snapshot) => (_jsxs("div", { ...provided.droppableProps, ref: provided.innerRef, className: `mt-5 space-y-3 rounded-[28px] transition ${snapshot.isDraggingOver ? 'bg-[rgba(255,106,0,0.08)] p-3' : ''}`, children: [setlist?.items.map((item, index) => {
                                                         const isActive = item.id === activeItemId;
                                                         return (_jsx(Draggable, { draggableId: item.id, index: index, children: (provided, snapshot) => (_jsx("div", { ref: provided.innerRef, ...provided.draggableProps, ...provided.dragHandleProps, className: `setlist-item-card ${snapshot.isDragging ? 'setlist-item-card-dragging' : ''} ${isActive ? 'setlist-item-card-active' : ''}`, onClick: () => setActiveItemId(item.id), children: _jsxs("div", { className: "flex items-start justify-between gap-4", children: [_jsxs("div", { className: "min-w-0 flex-1", children: [_jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [_jsx("span", { className: "rounded-full border border-orange-300/60 bg-orange-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70", children: String(index + 1).padStart(2, '0') }), _jsx("span", { className: "rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-black/70", children: item.content.contentType })] }), _jsx("p", { className: "mt-4 text-lg font-bold tracking-tight text-black", children: item.content.title })] }), _jsx("button", { type: "button", onClick: (e) => {
                                                                                 e.stopPropagation();
                                                                                 void handleRemoveItem(item.id);
                                                                             }, className: "btn-danger", children: "Remove" })] }) })) }, item.id));
-                                                    }), provided.placeholder] })) }) })] })] }))] }), isPerformanceMode && activeItem && (_jsxs("div", { ref: performanceModeRef, className: "performance-mode-overlay", onTouchStart: handleViewerTouchStart, onTouchEnd: handleViewerTouchEnd, children: [_jsxs("div", { className: "performance-mode-topbar", children: [_jsxs("div", { children: [_jsx("p", { className: "performance-mode-label", children: "Performance Mode" }), _jsx("h2", { children: activeItem.content.title }), _jsxs("p", { children: [activeIndex + 1, " of ", setlist?.items.length] })] }), _jsx("button", { type: "button", onClick: () => void exitPerformanceMode(), className: "performance-mode-close", children: "Close" })] }), _jsx("div", { className: "performance-mode-body", children: renderActiveContent() }), _jsx("div", { className: "performance-mode-hint", children: "Swipe between songs on iPad. Use keyboard left and right arrows on laptop." })] })), showAddModal && (_jsx("div", { className: "modal-overlay", children: _jsxs("div", { className: "card modal-card max-h-[32rem] max-w-2xl overflow-y-auto", children: [_jsx("p", { className: "section-kicker", children: "Add Content" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Add songs to this setlist" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Stay on this page and keep tapping songs. New additions are saved in the background." }), addStatus && (_jsx("div", { className: `mt-5 status-banner ${addStatus.tone === 'success'
+                                                    }), provided.placeholder] })) }) })] })] }))] }), isPerformanceMode && activeItem && (_jsxs("div", { ref: performanceModeRef, className: "performance-mode-overlay", onTouchStart: handleViewerTouchStart, onTouchMove: handleViewerTouchMove, onTouchEnd: handleViewerTouchEnd, onTouchCancel: handleViewerTouchCancel, children: [_jsxs("div", { className: "performance-mode-topbar", children: [_jsxs("div", { children: [_jsx("p", { className: "performance-mode-label", children: "Performance Mode" }), _jsx("h2", { children: activeItem.content.title }), _jsxs("p", { children: [activeIndex + 1, " of ", setlist?.items.length] })] }), _jsx("button", { type: "button", onClick: () => void exitPerformanceMode(), className: "performance-mode-close", children: "Close" })] }), _jsx("div", { className: "performance-mode-body", children: renderActiveContent() }), _jsx("div", { className: "performance-mode-hint", children: "Use a clear one-finger swipe between songs. Pinch to zoom stays on the same song." })] })), showAddModal && (_jsx("div", { className: "modal-overlay", children: _jsxs("div", { className: "card modal-card max-h-[32rem] max-w-2xl overflow-y-auto", children: [_jsx("p", { className: "section-kicker", children: "Add Content" }), _jsx("h2", { className: "mt-3 text-3xl font-bold tracking-tight", children: "Add songs to this setlist" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Stay on this page and keep tapping songs. New additions are saved in the background." }), addStatus && (_jsx("div", { className: `mt-5 status-banner ${addStatus.tone === 'success'
                                 ? 'status-banner-strong'
                                 : 'status-banner-muted'}`, children: addStatus.text })), availableContent.length === 0 ? (_jsxs("div", { className: "mt-6 rounded-[24px] border border-dashed border-orange-300/70 bg-[rgba(255,106,0,0.06)] px-5 py-10 text-center", children: [_jsx("p", { className: "text-xl font-semibold tracking-tight", children: "No songs in the band library yet" }), _jsx("p", { className: "mt-2 text-sm leading-6 text-black/60", children: "Add more content to the band library first, then come back here to build the setlist." })] })) : (_jsxs("div", { className: "mt-6 space-y-3", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-black/10 bg-white/70 px-4 py-3 text-sm text-black/60", children: [_jsxs("span", { children: [addedContentCount, " of ", availableContent.length, " songs already in this setlist"] }), _jsx("span", { children: addingContentIds.length > 0 ? 'Saving changes...' : 'Ready to add more' })] }), availableContent.map((content) => {
                                     const isAlreadyAdded = addedContentIds.has(content.id);
