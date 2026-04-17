@@ -260,16 +260,23 @@ select {
 
 .install-hint-overlay {
   align-items: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 1rem));
+  padding-right: max(1rem, calc(env(safe-area-inset-right, 0px) + 1rem));
   padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
+  padding-left: max(1rem, calc(env(safe-area-inset-left, 0px) + 1rem));
 }
 
 .install-hint-card {
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem);
+  max-height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem);
   max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem);
   overflow-y: auto;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) and (min-height: 900px) {
   .install-hint-overlay {
     align-items: center;
   }
